@@ -220,24 +220,37 @@ def main():
         print("cover resolver (local cache + disk cache, no network):")
         from core import covers  # noqa: E402
         covers.COVER_DIR = Path(tmp) / "covers"   # don't touch the repo's data/
-        # Newer per-app librarycache layout: portrait wins.
+        # Newer per-app librarycache layout: the portrait capsule is used.
         lc = root / "appcache" / "librarycache" / "440"
         lc.mkdir(parents=True)
-        (lc / "header.jpg").write_bytes(b"HEADER440")
+        (lc / "header.jpg").write_bytes(b"HEADER440")           # must be ignored
         (lc / "library_600x900.jpg").write_bytes(b"PORTRAIT440")
-        check("local cache prefers portrait over header",
+        check("local cache uses the portrait capsule",
               covers.cover_bytes(440, allow_network=False) == b"PORTRAIT440")
-        check("a local hit is written to the disk cache",
-              covers._disk_path(440).exists())
-        # Corrupt the source; the disk cache must now serve it.
-        (lc / "library_600x900.jpg").write_bytes(b"CHANGED")
-        check("second lookup served from disk cache",
-              covers.cover_bytes(440, allow_network=False) == b"PORTRAIT440")
-        # Older flat layout: {appid}_<asset>.
+        # Steam's local art wins and is NOT pinned by the disk cache: when Steam
+        # updates the local portrait (e.g. a new season), we serve the new one.
+        check("local portrait is not disk-cached (stays fresh)",
+              not covers._disk_path(440).exists())
+        (lc / "library_600x900.jpg").write_bytes(b"NEWSEASON440")
+        check("updated local portrait is picked up (not a frozen copy)",
+              covers.cover_bytes(440, allow_network=False) == b"NEWSEASON440")
+        # Disk cache (network results) is read when there's no local art.
+        covers._save_disk(441, b"NETCACHED441")
+        check("disk cache serves when no local art",
+              covers.cover_bytes(441, allow_network=False) == b"NETCACHED441")
+        # Older flat layout: {appid}_library_600x900.jpg.
         flat = root / "appcache" / "librarycache"
-        (flat / "570_header.jpg").write_bytes(b"HEADER570FLAT")
-        check("old flat librarycache layout resolves",
-              covers.cover_bytes(570, allow_network=False) == b"HEADER570FLAT")
+        (flat / "570_library_600x900.jpg").write_bytes(b"PORTRAIT570FLAT")
+        check("old flat portrait layout resolves",
+              covers.cover_bytes(570, allow_network=False) == b"PORTRAIT570FLAT")
+        # REGRESSION GUARD: a per-app folder with only hashed/non-portrait files must
+        # NOT be grabbed offline (that picked a low-res logo over the real portrait).
+        hashed = root / "appcache" / "librarycache" / "730"
+        hashed.mkdir(parents=True)
+        (hashed / "deadbeefdeadbeef.jpg").write_bytes(b"LOWRES_LOGO")
+        (hashed / "logo.png").write_bytes(b"LOGO")
+        check("arbitrary/hashed local files are not used (Apex regression guard)",
+              covers.cover_bytes(730, allow_network=False) is None)
         # No local art + no network -> None (never a silent wrong result).
         check("no local art + offline -> None",
               covers.cover_bytes(999999, allow_network=False) is None)

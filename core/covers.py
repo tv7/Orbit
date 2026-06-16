@@ -41,9 +41,6 @@ _UA = "Mozilla/5.0"
 _LEGACY_HOST = "https://cdn.cloudflare.steamstatic.com/steam/apps/{appid}/{asset}"
 _LEGACY_ASSETS = ("library_600x900.jpg", "header.jpg", "capsule_616x353.jpg")
 
-# Local librarycache filenames Steam writes, in preference order (portrait first).
-_LOCAL_PREF = ("library_600x900.jpg", "header.jpg", "library_hero.jpg", "logo.png")
-
 
 # ---------------------------------------------------------------------------
 # Disk cache
@@ -97,31 +94,25 @@ def _http_get(url: str) -> bytes | None:
 
 
 def _local_steam(appid: int, root: Path | None = None) -> bytes | None:
-    """Whatever art Steam already cached for this installed app. Handles the newer
-    per-app folder (librarycache/<appid>/<asset>) and the older flat layout
-    (librarycache/<appid>_<asset>)."""
+    """The portrait library capsule Steam cached for this installed app, if present
+    under its known filename — newer per-app folder (librarycache/<appid>/
+    library_600x900.jpg) or older flat layout (librarycache/<appid>_library_600x900.jpg).
+
+    We deliberately use ONLY the portrait, under its exact name. Modern Steam often
+    stores per-app art under hashed filenames; grabbing an arbitrary image from the
+    folder can't tell a portrait from a logo/capsule and picks low-res art (that
+    regressed e.g. Apex's seasonal cover down to its logo). Any non-portrait art is
+    fetched from the network sources below, where the asset type is known."""
     root = root or steam_paths.steam_root()
     if not root:
         return None
     cache = root / "appcache" / "librarycache"
-
-    appdir = cache / str(appid)
-    if appdir.is_dir():
-        for name in _LOCAL_PREF:                       # preferred exact names
-            f = appdir / name
-            if f.exists():
-                data = _read_file(f)
-                if data:
-                    return data
-        for f in sorted(appdir.glob("*.jpg")) + sorted(appdir.glob("*.png")):
-            data = _read_file(f)                       # else any image in the folder
-            if data:
-                return data
-
-    for name in _LOCAL_PREF:                           # old flat layout
-        f = cache / f"{appid}_{name}"
-        if f.exists():
-            data = _read_file(f)
+    for cand in (
+        cache / str(appid) / "library_600x900.jpg",   # newer per-app folder
+        cache / f"{appid}_library_600x900.jpg",        # older flat layout
+    ):
+        if cand.exists():
+            data = _read_file(cand)
             if data:
                 return data
     return None
@@ -166,18 +157,20 @@ def _appdetails(appid: int) -> bytes | None:
 def cover_bytes(appid: int, *, allow_network: bool = True) -> bytes | None:
     """Raw image bytes of real Steam art for `appid`, or None if nothing exists.
 
-    Layered: disk cache -> Steam local librarycache -> legacy CDN -> appdetails API.
-    Any local/network hit is saved to the disk cache. Set allow_network=False to
-    use only on-disk sources (offline / tests).
+    Order: Steam local librarycache -> disk cache -> legacy CDN -> appdetails API.
+    Steam's own local portrait is checked FIRST because Steam keeps it current (e.g.
+    seasonal covers), so an installed game always shows the latest art rather than a
+    frozen copy. Only NETWORK results are written to the disk cache (so it never
+    pins a stale cover over Steam's fresh local one). allow_network=False uses only
+    on-disk sources (offline / tests).
     """
+    local = _local_steam(appid)
+    if local:
+        return local
+
     cached = _read_disk(appid)
     if cached:
         return cached
-
-    local = _local_steam(appid)
-    if local:
-        _save_disk(appid, local)
-        return local
 
     if not allow_network:
         return None
