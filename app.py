@@ -40,6 +40,7 @@ TEXT = "#c7d5e0"
 BAD = "#c94f4f"
 BAD_HOVER = "#b04545"       # darker red on hover so white text stays high-contrast
 GOOD = "#5ba32b"
+WARN = "#d9a441"            # amber: "needs attention" (account needs re-login)
 MUTED = "#8aa0b6"           # secondary text / placeholder, legible on dark panels
 DIM = "#33414f"            # inactive control fill (disabled button / toggle OFF)
 
@@ -130,10 +131,10 @@ class App(tk.Tk):
                                     font=("Segoe UI", 10))
         self.account_lbl.pack(side="left", padx=10)
 
-        tk.Button(bar, text="Accounts", command=self.open_accounts,
-                  bg=ACCENT2, fg="#fff", activebackground=ACCENT2_HOVER,
-                  activeforeground="#fff", relief="flat", padx=10
-                  ).pack(side="right", padx=12)
+        self.accounts_btn = tk.Button(bar, text="Accounts", command=self.open_accounts,
+                                      bg=ACCENT2, fg="#fff", activebackground=ACCENT2_HOVER,
+                                      activeforeground="#fff", relief="flat", padx=10)
+        self.accounts_btn.pack(side="right", padx=12)
 
         # Cancel button: abort a launch that's underway (e.g. wrong game picked).
         # Starts dim/disabled (no launch yet); _set_cancel_enabled() turns it red
@@ -241,6 +242,9 @@ class App(tk.Tk):
         self.account_lbl.config(
             text=f"Logged in: {self.current_account}" if self.current_account
             else "No active account")
+        if hasattr(self, "accounts_btn"):
+            self.accounts_btn.config(
+                text=f"Accounts ({len(self.accounts)})" if self.accounts else "Accounts")
 
     def reload_games(self):
         self.games = games.installed_games()
@@ -369,6 +373,44 @@ class App(tk.Tk):
     def open_accounts(self):
         AccountsWindow(self)
 
+    def add_account(self, window=None):
+        """Restart Steam to its login screen so the user can add another account.
+        Steam must restart for the chooser ('+ Add an account') to appear, so we
+        confirm first, then do it off the UI thread (shutdown polls for a while)."""
+        if self._launching:
+            self.set_status("A launch is in progress — please wait…", "bad")
+            return
+        if not messagebox.askyesno(
+                "Add an account",
+                "This closes Steam and opens its login screen so you can add "
+                "another account.\n\nLog in with “Remember me” checked so "
+                "SteamSwitch can switch to it later.\n\nContinue?"):
+            return
+        if window is not None and window.winfo_exists():
+            window.destroy()
+        self.set_status("Closing Steam and opening the login screen…")
+        self.pool.submit(self._add_account_worker)
+
+    def _add_account_worker(self):
+        try:
+            ok = switcher.restart_to_add_account()
+        except Exception as e:
+            self.after(0, lambda e=e: self.set_status(f"Couldn't open Steam: {e}", "bad"))
+            return
+
+        def done():
+            if ok:
+                self.set_status(
+                    "Steam is opening its login screen. Sign in to the account you "
+                    "want to add with “Remember me” checked, then reopen Accounts.",
+                    "good")
+                # Give the user time to log in, then refresh so the new account shows.
+                self.after(45000, self.reload_accounts)
+            else:
+                self.set_status(
+                    "Couldn't close Steam — close it manually and try again.", "bad")
+        self.after(0, done)
+
     def _on_close(self):
         self.pool.shutdown(wait=False, cancel_futures=True)
         self.destroy()
@@ -386,19 +428,27 @@ class AccountsWindow(tk.Toplevel):
         tk.Label(self, text="Accounts", bg=PANEL, fg="#fff",
                  font=("Segoe UI", 12, "bold")).pack(anchor="w", padx=16, pady=(14, 4))
         tk.Label(self, bg=PANEL, fg="#9fb3c8", justify="left", wraplength=400,
-                 text="Installed games are mapped to their owning account "
-                      "automatically from Steam's install data — no setup needed. "
-                      "Log into each account in Steam once with “Remember me” "
-                      "checked so the launcher can switch to it silently."
+                 text="SteamSwitch can switch to any account you've logged into "
+                      "Steam with “Remember me”. Add another below; it logs in "
+                      "through Steam, then appears here ready to use."
                  ).pack(anchor="w", padx=16)
+
+        # Footer (always visible) with the Add-account action.
+        footer = tk.Frame(self, bg=PANEL)
+        footer.pack(side="bottom", fill="x", padx=12, pady=(0, 12))
+        tk.Button(footer, text="+ Add an account",
+                  command=lambda: app.add_account(self),
+                  bg=ACCENT2, fg="#fff", activebackground=ACCENT2_HOVER,
+                  activeforeground="#fff", relief="flat", padx=12, pady=6
+                  ).pack(fill="x")
 
         body = tk.Frame(self, bg=PANEL)
         body.pack(fill="both", expand=True, padx=12, pady=10)
 
         if not app.accounts:
-            tk.Label(body, bg=PANEL, fg=BAD, wraplength=400, justify="left",
-                     text="No accounts found in loginusers.vdf. Log into each "
-                          "account in Steam once with “Remember me” checked."
+            tk.Label(body, bg=PANEL, fg=MUTED, wraplength=400, justify="left",
+                     text="No accounts found yet. Click “+ Add an account” below "
+                          "and log in with “Remember me” checked."
                      ).pack(anchor="w")
             return
 
@@ -415,8 +465,17 @@ class AccountsWindow(tk.Toplevel):
     def _account_row(self, parent, acc, game_count):
         box = tk.Frame(parent, bg=BG, highlightthickness=1, highlightbackground="#000")
         box.pack(fill="x", pady=6)
-        tk.Label(box, text=acc.persona_name, bg=BG, fg=ACCENT,
-                 font=("Segoe UI", 10, "bold")).pack(anchor="w", padx=10, pady=(8, 0))
+
+        # Header line: persona name (left) + switch-readiness badge (right).
+        top = tk.Frame(box, bg=BG)
+        top.pack(fill="x", padx=10, pady=(8, 0))
+        tk.Label(top, text=acc.persona_name, bg=BG, fg=ACCENT,
+                 font=("Segoe UI", 10, "bold")).pack(side="left")
+        ready, _why = switcher.can_autologin(acc.account_name)
+        tk.Label(top, text="✓ ready" if ready else "⚠ needs login",
+                 bg=BG, fg=GOOD if ready else WARN,
+                 font=("Segoe UI", 8, "bold")).pack(side="right")
+
         tk.Label(box, text=f"{acc.account_name} · {acc.steamid64}", bg=BG,
                  fg=MUTED, font=("Segoe UI", 8)).pack(anchor="w", padx=10)
         tk.Label(box, text=f"{game_count} installed game"

@@ -432,6 +432,45 @@ def start_steam() -> None:
 # Public API
 # ---------------------------------------------------------------------------
 
+def _clear_autologin_user() -> None:
+    """Empty AutoLoginUser so Steam boots to its sign-in screen instead of
+    auto-logging into the current account — the trick TcNo uses to add a NEW account
+    (it sets AutoLoginUser to the account name, which is empty for a new login).
+    Windows registry only; the Unix equivalent (registry.vdf) is a follow-up."""
+    if not sys.platform.startswith("win"):
+        return
+    import winreg
+    try:
+        with winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER, r"Software\Valve\Steam", 0, winreg.KEY_SET_VALUE
+        ) as key:
+            winreg.SetValueEx(key, "AutoLoginUser", 0, winreg.REG_SZ, "")
+            winreg.SetValueEx(key, "RememberPassword", 0, winreg.REG_DWORD, 1)
+    except OSError:
+        pass
+
+
+def restart_to_add_account() -> bool:
+    """Restart Steam at its LOGIN screen so the user can sign into a NEW account.
+
+    Forcing the account picker isn't enough: while AutoLoginUser holds a valid
+    account, Steam signs straight in past the chooser and lands on the store (not a
+    login). So, like TcNo, we EMPTY AutoLoginUser; with the chooser also off, Steam
+    boots to its sign-in screen where the user can add another account. Steam must be
+    restarted for this to take effect. Returns True if Steam was relaunched, False if
+    it couldn't be closed first. Raises if Steam isn't installed.
+    """
+    root = steam_paths.steam_root()
+    if not root:
+        raise RuntimeError("Steam install not found")
+    if not shutdown_steam():
+        return False
+    _clear_autologin_user()                 # empty AutoLoginUser -> sign-in screen
+    set_account_picker(root, show=False)    # the login screen, not the saved-account picker
+    start_steam()
+    return True
+
+
 def switch_account(account_name: str) -> None:
     """Make `account_name` the account Steam auto-logs into. Steam must be
     restarted afterwards for this to take effect (see launcher.play)."""

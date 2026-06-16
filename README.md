@@ -56,11 +56,14 @@ build the Windows `.exe` on a Windows machine.
    API key needed.
 3. Click any game to play.
 
+Need another account? Open **Accounts → “+ Add an account.”** It restarts Steam to
+the login screen so you can sign in (with **“Remember me”** checked); the new
+account then appears in the list, marked **✓ ready** once it can be switched to.
+
 Almost all installed games map automatically. A game can occasionally stay
 **unmapped** — some family-shared installs record no local owner — and there is
 currently **no in-app way to map one manually**, so those few can't be launched
-through SteamSwitch yet. The **Accounts** window is informational: it lists your
-accounts and how many installed games map to each.
+through SteamSwitch yet.
 
 ## Two hard limitations (by Steam's design)
 

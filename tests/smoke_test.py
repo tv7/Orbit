@@ -217,6 +217,18 @@ def main():
         check("set_offline_mode false for unknown account",
               switcher.set_offline_mode("charlie", True) is False)
 
+        print("add-account flow (restart_to_add_account):")
+        # Add-account must take Steam to its LOGIN screen, not the saved-account
+        # picker: turn the picker ON, then the restart must turn it OFF (and, on
+        # Windows, empty AutoLoginUser — not testable here). start_steam raises in the
+        # sandbox (no real Steam exe); the config writes happen before that.
+        switcher.set_account_picker(root, show=True)
+        try:
+            switcher.restart_to_add_account()
+        except Exception:
+            pass  # start_steam can't launch a real Steam in the sandbox — that's fine
+        check("add-account opens the login screen (picker off)", picker_on() == "0")
+
         print("cover resolver (local cache + disk cache, no network):")
         from core import covers  # noqa: E402
         covers.COVER_DIR = Path(tmp) / "covers"   # don't touch the repo's data/
