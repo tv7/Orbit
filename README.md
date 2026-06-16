@@ -41,6 +41,7 @@ build the Windows `.exe` on a Windows machine.
 | Find Steam + library folders | `core/steam_paths.py` |
 | List installed games (`appmanifest_*.acf`) | `core/games.py` |
 | List accounts (`loginusers.vdf`) + map games→accounts from local Steam data | `core/accounts.py` |
+| Resolve cover art (local cache → CDN → Steam store API) | `core/covers.py` |
 | Switch account (registry + loginusers) and control the Steam process | `core/switcher.py` |
 | Orchestrate switch → launch | `core/launcher.py` |
 | Native desktop GUI (Tkinter) | `app.py` |

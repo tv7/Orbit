@@ -217,6 +217,31 @@ def main():
         check("set_offline_mode false for unknown account",
               switcher.set_offline_mode("charlie", True) is False)
 
+        print("cover resolver (local cache + disk cache, no network):")
+        from core import covers  # noqa: E402
+        covers.COVER_DIR = Path(tmp) / "covers"   # don't touch the repo's data/
+        # Newer per-app librarycache layout: portrait wins.
+        lc = root / "appcache" / "librarycache" / "440"
+        lc.mkdir(parents=True)
+        (lc / "header.jpg").write_bytes(b"HEADER440")
+        (lc / "library_600x900.jpg").write_bytes(b"PORTRAIT440")
+        check("local cache prefers portrait over header",
+              covers.cover_bytes(440, allow_network=False) == b"PORTRAIT440")
+        check("a local hit is written to the disk cache",
+              covers._disk_path(440).exists())
+        # Corrupt the source; the disk cache must now serve it.
+        (lc / "library_600x900.jpg").write_bytes(b"CHANGED")
+        check("second lookup served from disk cache",
+              covers.cover_bytes(440, allow_network=False) == b"PORTRAIT440")
+        # Older flat layout: {appid}_<asset>.
+        flat = root / "appcache" / "librarycache"
+        (flat / "570_header.jpg").write_bytes(b"HEADER570FLAT")
+        check("old flat librarycache layout resolves",
+              covers.cover_bytes(570, allow_network=False) == b"HEADER570FLAT")
+        # No local art + no network -> None (never a silent wrong result).
+        check("no local art + offline -> None",
+              covers.cover_bytes(999999, allow_network=False) is None)
+
     print()
     if failures:
         print(f"{failures} test(s) FAILED")

@@ -11,16 +11,16 @@ instead of images.
 
 from __future__ import annotations
 
+import io
 import sys
 import threading
-import urllib.request
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import tkinter as tk
 from tkinter import ttk, messagebox
 
-from core import games, accounts, switcher, launcher, steam_paths
+from core import games, accounts, switcher, launcher, steam_paths, covers
 
 try:
     from PIL import Image, ImageTk
@@ -44,7 +44,11 @@ MUTED = "#8aa0b6"           # secondary text / placeholder, legible on dark pane
 DIM = "#33414f"            # inactive control fill (disabled button / toggle OFF)
 
 CARD_W, CARD_H = 150, 225
-COVER_DIR = Path(__file__).resolve().parent / "data" / "covers"
+
+# High-quality downscale filter, across Pillow versions (Resampling added in 9.1).
+if HAVE_PIL:
+    _RESAMPLE = getattr(getattr(Image, "Resampling", Image), "LANCZOS", None) \
+        or getattr(Image, "BICUBIC", None)
 
 
 def _asset(name: str) -> Path:
@@ -54,19 +58,18 @@ def _asset(name: str) -> Path:
     return base / "assets" / name
 
 
-def local_cover(appid: int) -> Path | None:
-    """Steam caches cover art locally; reuse it so we work offline too."""
-    root = steam_paths.steam_root()
-    if not root:
-        return None
-    cache = root / "appcache" / "librarycache"
-    for cand in (
-        cache / f"{appid}_library_600x900.jpg",      # older flat layout
-        cache / str(appid) / "library_600x900.jpg",  # newer per-app layout
-    ):
-        if cand.exists():
-            return cand
-    return None
+def _fit_portrait(img, w: int, h: int):
+    """Scale + center-crop `img` to exactly w x h (like CSS background 'cover').
+
+    Portrait art (library_600x900) fills the card perfectly; landscape art (header /
+    capsule, the only art some games have) fills it via a center crop instead of
+    being stretched out of shape."""
+    iw, ih = img.size
+    scale = max(w / iw, h / ih)
+    nw, nh = max(1, round(iw * scale)), max(1, round(ih * scale))
+    img = img.resize((nw, nh), _RESAMPLE) if _RESAMPLE else img.resize((nw, nh))
+    left, top = (nw - w) // 2, (nh - h) // 2
+    return img.crop((left, top, left + w, top + h))
 
 
 class App(tk.Tk):
@@ -298,22 +301,11 @@ class App(tk.Tk):
 
     def _load_cover(self, game, label):
         try:
-            data = None
-            lc = local_cover(game.appid)
-            if lc:
-                data = lc.read_bytes()
-            else:
-                for url in (game.cover_url(), game.header_url()):
-                    try:
-                        with urllib.request.urlopen(url, timeout=10) as r:
-                            data = r.read()
-                        break
-                    except Exception:
-                        continue
+            data = covers.cover_bytes(game.appid)
             if not data:
                 return
-            img = Image.open(__import__("io").BytesIO(data)).convert("RGB")
-            img = img.resize((CARD_W, CARD_H))
+            img = Image.open(io.BytesIO(data)).convert("RGB")
+            img = _fit_portrait(img, CARD_W, CARD_H)
             photo = ImageTk.PhotoImage(img)
         except Exception:
             return
