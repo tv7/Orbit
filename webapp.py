@@ -256,7 +256,11 @@ def main():
 
     # Window / taskbar icon. The frozen .exe gets its icon from PyInstaller's
     # --icon; this covers running from source where supported by the backend.
-    icon = _base_dir() / "assets" / "steamswitch.png"
+    # Windows (EdgeChromium) builds a System.Drawing.Icon and REQUIRES a real
+    # .ico — a .png throws "must be a picture that can be used as a Icon"; other
+    # backends (GTK/Qt) want a .png.
+    icon = _base_dir() / "assets" / (
+        "steamswitch.ico" if sys.platform.startswith("win") else "steamswitch.png")
     try:
         webview.start(icon=str(icon))
     except TypeError:           # older pywebview without an `icon` kwarg
