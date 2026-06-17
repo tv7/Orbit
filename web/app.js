@@ -4,7 +4,7 @@
 "use strict";
 
 const STATE = { games: [], accounts: [], current: null, version: "", logo: null, steam_root: null };
-const UI = { view: "library", search: "", sort: "az", filter: "all", offline: false, launching: false };
+const UI = { view: "library", search: "", sort: "az", filter: "all", offline: false, launching: false, loaded: false };
 
 const $ = (sel, root = document) => root.querySelector(sel);
 const el = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
@@ -21,7 +21,19 @@ async function call(name, ...args) {
 }
 
 /* Python -> page */
-window.onState = (s) => { applyState(s); render(); };
+window.onState = (s) => {
+  applyState(s);
+  render();
+  setStatus(STATE.games.length ? `${STATE.games.length} games installed.`
+            : (STATE.steam_root ? "No installed games found."
+                                : "Steam install not found on this PC."),
+            STATE.games.length ? "" : "bad");
+};
+window.onCover = ({ appid, url }) => {
+  if (url) coverCache[appid] = url;
+  if (!url) return;
+  document.querySelectorAll(`.card[data-appid="${appid}"]`).forEach(c => setCardImage(c, url));
+};
 window.onStatus = ({ text, kind }) => setStatus(text, kind);
 window.onLaunchStart = () => { UI.launching = true; $("#btn-stop").disabled = false; };
 window.onLaunchDone = ({ ok, message, needs_login }) => {
@@ -33,6 +45,7 @@ window.onLaunchDone = ({ ok, message, needs_login }) => {
 
 function applyState(s) {
   if (!s) return;
+  UI.loaded = true;
   STATE.games = s.games || [];
   STATE.accounts = s.accounts || [];
   STATE.current = s.current_account || null;
@@ -96,8 +109,8 @@ function renderLibrary(c) {
   c.append(head);
 
   if (!STATE.games.length) {
-    c.append(el("div", "empty", STATE.steam_root
-      ? "No installed games found." : "Steam install not found on this PC."));
+    c.append(el("div", "empty", !UI.loaded ? "Loading library…"
+      : (STATE.steam_root ? "No installed games found." : "Steam install not found on this PC.")));
     return;
   }
 
@@ -117,7 +130,16 @@ function renderLibrary(c) {
   lazyLoadCovers(grid);
 }
 
+const coverCache = {};   // appid -> data URL, so re-renders don't re-fetch
 let coverObserver = null;
+
+function setCardImage(card, url) {
+  if (!card.isConnected || card.querySelector("img")) return;
+  const img = new Image();
+  img.onload = () => { const ph = $(".placeholder", card); if (ph) ph.remove(); card.prepend(img); };
+  img.src = url;
+}
+
 function lazyLoadCovers(grid) {
   if (coverObserver) coverObserver.disconnect();
   coverObserver = new IntersectionObserver((entries, obs) => {
@@ -126,12 +148,8 @@ function lazyLoadCovers(grid) {
       const card = en.target;
       obs.unobserve(card);
       const appid = card.dataset.appid;
-      call("get_cover", appid).then(url => {
-        if (!url || !card.isConnected) return;
-        const img = new Image();
-        img.onload = () => { const ph = $(".placeholder", card); if (ph) ph.remove(); card.prepend(img); };
-        img.src = url;
-      });
+      if (coverCache[appid]) setCardImage(card, coverCache[appid]);
+      else call("request_cover", appid);   // result arrives via window.onCover
     }
   }, { rootMargin: "300px" });
   grid.querySelectorAll(".card").forEach(c => coverObserver.observe(c));
@@ -237,12 +255,9 @@ async function addAccount() {
   await call("add_account");
 }
 
-async function refresh() {
+function refresh() {
   setStatus("Refreshing…");
-  const s = await call("get_state");
-  applyState(s); render();
-  setStatus(STATE.games.length ? `${STATE.games.length} games installed.` : "No installed games found.",
-            STATE.games.length ? "" : "bad");
+  call("request_state");   // onState re-renders + sets the final status
 }
 
 /* ------------------------------------------------------------- filter menu */
@@ -282,15 +297,11 @@ function wire() {
   document.addEventListener("click", e => { if (!e.target.closest(".filter-wrap")) toggleFilterMenu(false); });
 }
 
-async function boot() {
+function boot() {
   wire();
+  render();                // paint the empty shell immediately
   setStatus("Loading…");
-  const s = await call("get_state");
-  applyState(s);
-  render();
-  setStatus(STATE.games.length ? `${STATE.games.length} games installed.`
-            : (STATE.steam_root ? "No installed games found." : "Steam install not found on this PC."),
-            STATE.games.length ? "" : "bad");
+  call("request_state");   // onState fills it in when the scan finishes
 }
 
 /* pywebview injects the api asynchronously; wait for it (or boot now if present). */

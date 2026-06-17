@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import base64
 import json
+import os
 import sys
 import threading
 from concurrent.futures import ThreadPoolExecutor
@@ -57,9 +58,14 @@ def _asset_data_url(name: str) -> str | None:
 
 class Api:
     """The JS-facing bridge. Every public method is callable from the front-end as
-    `window.pywebview.api.<name>(...)` and returns a JSON-serializable value (or a
-    resolved Promise). Long-running work (a launch) runs on a background thread and
-    pushes progress back into the page via `self.window.evaluate_js(...)`."""
+    `window.pywebview.api.<name>(...)`.
+
+    CRITICAL: pywebview may run js_api calls on the GUI/message-loop thread, so a
+    bridge method that does file/registry/**network** I/O would freeze the window
+    ("not responding" — especially under pythonw, which has no console). So the
+    JS-facing methods here NEVER block: they kick the work onto a background thread
+    and return immediately, then push results back into the page via
+    `self.window.evaluate_js(...)` (the `on*` globals)."""
 
     def __init__(self):
         self.window = None
@@ -69,6 +75,7 @@ class Api:
         self.current_account: str | None = None
         self._launching = False
         self._cancel = threading.Event()
+        self._state_lock = threading.Lock()   # guards _reload / get_state scans
         self.pool = ThreadPoolExecutor(max_workers=6)
 
     # ----------------------------------------------------------- helpers
@@ -99,9 +106,14 @@ class Api:
             except Exception:
                 pass
 
-    # -------------------------------------------------------- JS-facing
-    def get_state(self) -> dict:
-        """Everything the UI needs for a full render. Called on load and on refresh."""
+    # ------------------------------------------------------ state (internal)
+    def _build_state(self) -> dict:
+        """Everything the UI needs for a full render. Scans disk/registry, so it
+        runs on a worker (see request_state), never on the GUI thread."""
+        with self._state_lock:
+            return self._build_state_locked()
+
+    def _build_state_locked(self) -> dict:
         self._reload()
 
         counts: dict[str, int] = {}
@@ -144,18 +156,42 @@ class Api:
             "games": games_out,
         }
 
-    def get_cover(self, appid: int) -> str | None:
-        """Return the cover art for one game as a data: URL, or null. Lazy-loaded by
-        the page (one request per card as it scrolls into view). covers.cover_bytes
-        already disk-caches, so this is cheap after the first hit."""
-        try:
-            data = covers.cover_bytes(int(appid))
-        except Exception:
-            return None
-        if not data:
-            return None
-        mime = "image/png" if data[:8] == b"\x89PNG\r\n\x1a\n" else "image/jpeg"
-        return f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
+    # -------------------------------------------------------- JS-facing
+    def request_state(self) -> dict:
+        """Kick off a full state scan on a worker; the result is pushed to the page
+        as onState. Returns immediately so the GUI thread never blocks. Used on load
+        and on refresh."""
+        def work():
+            try:
+                state = self._build_state()
+            except Exception as exc:
+                self._push("onStatus",
+                           {"text": f"Failed to read Steam data: {exc}", "kind": "bad"})
+                return
+            self._push("onState", state)
+        threading.Thread(target=work, daemon=True).start()
+        return {"ok": True}
+
+    def request_cover(self, appid: int) -> dict:
+        """Fetch one game's cover on a worker (covers.cover_bytes may hit the network)
+        and push it to the page as onCover {appid, url}. url is null if none found.
+        Returns immediately. Lazy-called per card as it scrolls into view."""
+        appid = int(appid)
+
+        def work():
+            url = None
+            try:
+                data = covers.cover_bytes(appid)
+                if data:
+                    mime = ("image/png" if data[:8] == b"\x89PNG\r\n\x1a\n"
+                            else "image/jpeg")
+                    url = f"data:{mime};base64," + base64.b64encode(data).decode("ascii")
+            except Exception:
+                url = None
+            self._push("onCover", {"appid": appid, "url": url})
+
+        self.pool.submit(work)
+        return {"ok": True}
 
     def play(self, appid: int, offline: bool = False) -> dict:
         """Switch to the owning account and launch the game. Returns immediately;
@@ -193,7 +229,7 @@ class Api:
             })
             if res.switched:
                 # account changed — hand the page a fresh state after Steam settles
-                threading.Timer(4.0, lambda: self._push("onState", self.get_state())).start()
+                threading.Timer(4.0, self.request_state).start()
 
         threading.Thread(target=work, daemon=True).start()
         return {"ok": True}
@@ -224,7 +260,7 @@ class Api:
                     "text": ("Steam is opening its login screen. Sign in with "
                              "“Remember me” checked, then reopen Accounts."),
                     "kind": "good"})
-                threading.Timer(45.0, lambda: self._push("onState", self.get_state())).start()
+                threading.Timer(45.0, self.request_state).start()
             else:
                 self._push("onStatus", {
                     "text": "Couldn't close Steam — close it manually and try again.",
@@ -235,6 +271,13 @@ class Api:
 
 
 def main():
+    # Under pythonw.exe (how SteamSwitch.bat launches us — no console) sys.stdout
+    # and sys.stderr are None; any library that writes to them would crash. Point
+    # them at the null device so logging from pywebview/pythonnet is harmless.
+    for stream in ("stdout", "stderr"):
+        if getattr(sys, stream) is None:
+            setattr(sys, stream, open(os.devnull, "w"))
+
     if webview is None:
         sys.stderr.write(
             "pywebview is not installed. Install it with:\n\n"
