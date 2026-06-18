@@ -12,6 +12,11 @@ data/covers/
 data/mapping.json
 data/settings.json
 
+# Tauri / Rust build output
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+
 # OS
 .DS_Store
 Thumbs.db
