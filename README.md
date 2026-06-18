@@ -8,8 +8,10 @@ manual account swapping. Optional "launch offline" toggle.
 
 **Grab the latest release → [Releases](https://github.com/tv7/steam-switch/releases/latest)**
 
-Download the portable **`SteamSwitch.exe`**, double-click, and you're running —
-no Python, no installer, nothing to set up. Windows only for now.
+Download **`SteamSwitch-portable.zip`**, unzip it anywhere, and run
+**`SteamSwitch.exe`** inside — no Python, no installer, nothing to set up. Keep the
+two files in the folder (`SteamSwitch.exe` + `server.exe`) together. Windows 10/11
+only for now (uses the built-in Edge WebView2 runtime).
 
 > First-time tip: log into each of your Steam accounts once with **"Remember me"**
 > checked so SteamSwitch can switch between them. See [First-time setup](#first-time-setup).
