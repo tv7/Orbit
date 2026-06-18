@@ -4,6 +4,9 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>SteamSwitch</title>
+  <!-- Paint dark immediately (before style.css loads) so WebView2's async init in
+       the Tauri shell never shows a white flash. -->
+  <style>html, body { background: #0b1326; margin: 0; height: 100%; }</style>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
@@ -73,6 +76,7 @@
   <div id="overlay"></div>
   <div id="toasts"></div>
 
+  <script src="bridge.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

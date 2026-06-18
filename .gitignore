@@ -12,6 +12,17 @@ data/covers/
 data/mapping.json
 data/settings.json
 
+# Tauri / Rust build output
+src-tauri/target/
+src-tauri/gen/
+src-tauri/icons/
+
+# Dev/debug artifacts (screenshots, logs, browser-automation output, promo capture)
+/*.png
+/*.log
+/*.html
+.playwright-mcp/
+
 # OS
 .DS_Store
 Thumbs.db
