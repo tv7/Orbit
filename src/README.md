@@ -9,7 +9,7 @@ repo `CLAUDE.md`); the other stores (Epic/GOG/Xbox) are added on top.
 
 | Path | Role |
 |------|------|
-| `core/` | Pure C++ engine, **no Qt** — headless + unit-testable. VDF/JSON parsers, OS platform layer, Steam paths/games/accounts/switcher/launcher/covers, Epic enumeration (`epic_games.*`), the `IStore` interface + `SteamStore`/`EpicStore`. |
+| `core/` | Pure C++ engine, **no Qt** — headless + unit-testable. VDF/JSON parsers, OS platform layer, Steam paths/games/accounts/switcher/launcher/covers, Epic enumeration (`epic_games.*`), GOG registry enumeration (`gog_games.*`), the `IStore` interface + `SteamStore`/`EpicStore`/`GogStore`. |
 | `core/platform_{win,posix}.cpp` | OS specifics: registry, process control, `EnumWindows`, `ShellExecute`/`xdg-open`. Windows is the real one; POSIX mirrors the Python stubs. |
 | `core/http.{h,cpp}` | Injectable HTTP — the host installs a fetcher so `core/` stays Qt-free (the Qt UI installs a `QNetwork` one; tests inject a stub). |
 | `ui/` | Qt 6 + QML. `Backend` (the in-process replacement for `server.py`+`bridge.js`), `GameModel`, `QtFetcher`, and `qml/` views. |
@@ -78,8 +78,17 @@ is already byte-identical.)
   switching). `Backend` aggregates it alongside Steam; non-Steam games get a stable
   synthetic id so the appid-keyed UI can address them. Verify on real hardware with
   `ssdiag epic`.
+- **GOG store — done + tested headless:** `core/gog_games.*` enumerates installed
+  games from the Windows registry (`HKLM\SOFTWARE\WOW6432Node\GOG.com\Games\<gameID>`,
+  32-bit fallback under `SOFTWARE\GOG.com\Games`) — no Galaxy SQLite dependency.
+  `stores/gog_store.cpp` launches via GOG Galaxy's
+  `GalaxyClient.exe /command=runGame /gameId=<id> /path=<dir>` when Galaxy is
+  installed, else runs the DRM-free exe directly in its install dir. Needed two new
+  platform primitives: `regSubKeys()` (registry enumeration) and a
+  working-directory `spawnDetached()` overload. Registry-only ⇒ empty off-Windows;
+  the pure Game/argv builders are unit-tested. Verify with `ssdiag gog`.
 - **Written, builds on Windows w/ Qt (not yet run here — no Qt/display in sandbox):**
   the Qt/QML UI (grid, covers, search/filter, accounts hub, launch/cancel, offline,
   RTL scaffolding), settings/language persistence, store-routed launching.
-- **Next:** GOG / Xbox stores (implement `IStore`), then `windeployqt`
+- **Next:** Xbox / Game Pass store (implement `IStore`), then `windeployqt`
   portable-zip packaging, then retire the Python/Tauri stack.

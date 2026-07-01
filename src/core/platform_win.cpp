@@ -49,15 +49,16 @@ std::wstring quoteJoin(const std::vector<std::string>& argv) {
     return cmd;
 }
 
-bool spawn(const std::vector<std::string>& argv, bool wait) {
+bool spawn(const std::vector<std::string>& argv, bool wait, const std::string& cwd = {}) {
     if (argv.empty()) return false;
     std::wstring cmd = quoteJoin(argv);
     std::vector<wchar_t> buf(cmd.begin(), cmd.end());
     buf.push_back(L'\0');
+    std::wstring wdir = widen(cwd);
     STARTUPINFOW si{}; si.cb = sizeof(si);
     PROCESS_INFORMATION pi{};
     if (!CreateProcessW(nullptr, buf.data(), nullptr, nullptr, FALSE,
-                        kNoWindow, nullptr, nullptr, &si, &pi))
+                        kNoWindow, nullptr, cwd.empty() ? nullptr : wdir.c_str(), &si, &pi))
         return false;
     if (wait) WaitForSingleObject(pi.hProcess, INFINITE);
     CloseHandle(pi.hThread);
@@ -112,6 +113,25 @@ bool regWriteDword(Hive hive, const std::string& subkey, const std::string& name
     return r == ERROR_SUCCESS;
 }
 
+std::vector<std::string> regSubKeys(Hive hive, const std::string& subkey) {
+    std::vector<std::string> out;
+    HKEY key;
+    // KEY_WOW64_64KEY so a 64-bit build still sees keys written under the same view;
+    // GOG's own keys live under WOW6432Node, addressed explicitly by the caller.
+    if (RegOpenKeyExW(hiveHandle(hive), widen(subkey).c_str(), 0, KEY_READ, &key) != ERROR_SUCCESS)
+        return out;
+    wchar_t name[256];
+    for (DWORD i = 0;; ++i) {
+        DWORD len = 256;
+        LONG r = RegEnumKeyExW(key, i, name, &len, nullptr, nullptr, nullptr, nullptr);
+        if (r == ERROR_NO_MORE_ITEMS) break;
+        if (r != ERROR_SUCCESS) break;
+        out.push_back(narrow(std::wstring(name, len)));
+    }
+    RegCloseKey(key);
+    return out;
+}
+
 bool processRunning(const std::string& imageName) {
     // Use the Toolhelp snapshot rather than parsing tasklist text.
     HANDLE snap = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
@@ -135,6 +155,10 @@ void forceKill(const std::string& imageName) {
 void runWait(const std::vector<std::string>& argv) { spawn(argv, true); }
 
 void spawnDetached(const std::vector<std::string>& argv) { spawn(argv, false); }
+
+void spawnDetached(const std::vector<std::string>& argv, const std::string& workingDir) {
+    spawn(argv, false, workingDir);
+}
 
 void openUri(const std::string& uri) {
     ShellExecuteW(nullptr, L"open", widen(uri).c_str(), nullptr, nullptr, SW_SHOWNORMAL);

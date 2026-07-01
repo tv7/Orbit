@@ -17,6 +17,7 @@ std::optional<std::string> regReadString(Hive, const std::string&, const std::st
 std::optional<uint32_t>    regReadDword (Hive, const std::string&, const std::string&) { return std::nullopt; }
 bool regWriteString(Hive, const std::string&, const std::string&, const std::string&) { return false; }
 bool regWriteDword (Hive, const std::string&, const std::string&, uint32_t) { return false; }
+std::vector<std::string> regSubKeys(Hive, const std::string&) { return {}; }
 
 static int runv(const std::string& cmd) { return std::system(cmd.c_str()); }
 
@@ -52,6 +53,13 @@ void runWait(const std::vector<std::string>& argv) {
 void spawnDetached(const std::vector<std::string>& argv) {
     if (argv.empty()) return;
     runv(join(argv) + " >/dev/null 2>&1 &");
+}
+
+void spawnDetached(const std::vector<std::string>& argv, const std::string& workingDir) {
+    if (argv.empty()) return;
+    std::string cmd = workingDir.empty() ? join(argv)
+                                         : "cd '" + workingDir + "' && " + join(argv);
+    runv("( " + cmd + " ) >/dev/null 2>&1 &");
 }
 
 void openUri(const std::string& uri) {

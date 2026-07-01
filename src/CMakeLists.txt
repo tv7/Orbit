@@ -20,8 +20,10 @@ set(CORE_SOURCES
     core/steam_launcher.cpp
     core/covers.cpp
     core/epic_games.cpp
+    core/gog_games.cpp
     core/stores/steam_store.cpp
     core/stores/epic_store.cpp
+    core/stores/gog_store.cpp
 )
 if(WIN32)
     list(APPEND CORE_SOURCES core/platform_win.cpp)

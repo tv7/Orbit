@@ -7,12 +7,14 @@
 //   ssdiag games      ~ python -m core.games
 //   ssdiag accounts   ~ python -m core.accounts   (mapping + how each game resolved)
 //   ssdiag epic         list installed Epic games + their launch URIs
+//   ssdiag gog          list installed GOG games + their launch commands
 //   ssdiag covers <id>  resolve one cover (prints byte count / source)
 //
 // Build with the core sources + platform_{win,posix}.cpp.
 
 #include "../core/covers.h"
 #include "../core/epic_games.h"
+#include "../core/gog_games.h"
 #include "../core/model.h"
 #include "../core/steam_accounts.h"
 #include "../core/steam_games.h"
@@ -87,6 +89,23 @@ static void cmdEpic() {
                     g.fullyInstalled ? "" : "  (partial)", epic::launchUri(g.launchId).c_str());
 }
 
+static void cmdGog() {
+    auto galaxy = gog::galaxyClientExe();
+    std::printf("GOG Galaxy: %s\n\n", galaxy ? galaxy->c_str() : "(not installed — will launch exes directly)");
+    auto games = gog::installedGames();
+    if (games.empty()) { std::printf("(no installed GOG games found)\n"); return; }
+    for (const auto& g : games) {
+        std::printf("%-40s  id=%s\n    dir: %s\n", g.name.c_str(), g.launchId.c_str(),
+                    g.installdir.c_str());
+        if (auto e = gog::entry(g.launchId)) {
+            auto argv = galaxy ? gog::galaxyRunGameArgv(*galaxy, *e) : gog::directLaunchArgv(*e);
+            std::string cmd;
+            for (const auto& a : argv) { if (!cmd.empty()) cmd += ' '; cmd += a; }
+            std::printf("    launch: %s\n", cmd.c_str());
+        }
+    }
+}
+
 static void cmdCovers(int64_t appid) {
     auto bytes = covers::coverBytes(appid);
     if (bytes) std::printf("cover %lld: %zu bytes\n", (long long)appid, bytes->size());
@@ -99,7 +118,8 @@ int main(int argc, char** argv) {
     else if (cmd == "games") cmdGames();
     else if (cmd == "accounts") cmdAccounts();
     else if (cmd == "epic") cmdEpic();
+    else if (cmd == "gog") cmdGog();
     else if (cmd == "covers" && argc > 2) cmdCovers(std::stoll(argv[2]));
-    else { std::printf("usage: ssdiag [paths|games|accounts|epic|covers <appid>]\n"); return 2; }
+    else { std::printf("usage: ssdiag [paths|games|accounts|epic|gog|covers <appid>]\n"); return 2; }
     return 0;
 }

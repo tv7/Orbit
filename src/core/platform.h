@@ -23,6 +23,10 @@ std::optional<uint32_t>    regReadDword (Hive hive, const std::string& subkey, c
 bool regWriteString(Hive hive, const std::string& subkey, const std::string& name, const std::string& value);
 bool regWriteDword (Hive hive, const std::string& subkey, const std::string& name, uint32_t value);
 
+// Immediate subkey names under a registry key (for GOG's HKLM\...\GOG.com\Games\<id>
+// enumeration). Empty on POSIX / missing key.
+std::vector<std::string> regSubKeys(Hive hive, const std::string& subkey);
+
 // --- Process control ---------------------------------------------------------
 // True if a process with this image name is running (tasklist on Windows,
 // pgrep -x on POSIX). `imageName` is e.g. "steam.exe" / "steam".
@@ -37,6 +41,10 @@ void runWait(const std::vector<std::string>& argv);
 
 // Start a process detached (do not wait) — used to (re)launch Steam.
 void spawnDetached(const std::vector<std::string>& argv);
+
+// Same, but in a given working directory (GOG DRM-free exes often need their
+// install dir as the cwd). Empty `workingDir` == inherit the parent's.
+void spawnDetached(const std::vector<std::string>& argv, const std::string& workingDir);
 
 // Open a URI/file with the OS handler (ShellExecute / open / xdg-open) — used
 // for steam://rungameid/<id> and the Epic/Xbox launch protocols.

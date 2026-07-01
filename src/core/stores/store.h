@@ -38,6 +38,7 @@ public:
 // Built-in stores (each returns nullptr-safe instances; absence handled by scan()).
 std::unique_ptr<IStore> makeSteamStore();
 std::unique_ptr<IStore> makeEpicStore();
-// makeGogStore(), makeXboxStore() land in later phases.
+std::unique_ptr<IStore> makeGogStore();
+// makeXboxStore() lands in a later phase.
 
 }  // namespace ss

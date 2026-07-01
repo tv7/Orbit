@@ -48,7 +48,8 @@ Backend::Backend(QObject* parent) : QObject(parent) {
     proxy_.setSourceModel(&model_);
     stores_.push_back(makeSteamStore());
     stores_.push_back(makeEpicStore());
-    // GOG/Xbox stores get pushed here in later phases.
+    stores_.push_back(makeGogStore());
+    // Xbox store gets pushed here in a later phase.
     pool_.setMaxThreadCount(6);
     language_ = QString::fromStdString(settings::language());
 }
