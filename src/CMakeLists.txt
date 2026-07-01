@@ -110,6 +110,15 @@ if(Qt6_FOUND)
             ui/fonts/cairo-arabic-600.ttf
             ui/fonts/cairo-arabic-700.ttf
     )
+    # Arabic UI catalog. ar.qm is prebuilt from ar.ts and committed, so building
+    # the app needs no Qt LinguistTools. Regenerate after changing UI strings:
+    #   lupdate ui/qml/*.qml ui/Backend.cpp -ts ui/i18n/ar.ts   (then translate)
+    #   lrelease ui/i18n/ar.ts -qm ui/i18n/ar.qm
+    qt_add_resources(SteamSwitch "translations"
+        PREFIX "/i18n"
+        BASE "ui/i18n"
+        FILES ui/i18n/ar.qm
+    )
     target_link_libraries(SteamSwitch PRIVATE sscore Qt6::Core Qt6::Gui Qt6::Quick Qt6::Network)
     # TODO: flip back to ON once the UI is verified — OFF gives a console so QML
     # load errors are visible while debugging.

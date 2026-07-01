@@ -14,6 +14,7 @@
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QTextStream>
+#include <QTranslator>
 
 // Mirror every Qt log message (incl. QML load errors) to startup.log next to the
 // exe, so failures are visible even in the windowed build. Temporary debug aid.
@@ -57,6 +58,21 @@ int main(int argc, char* argv[]) {
 
     QQmlApplicationEngine engine;
     engine.rootContext()->setContextProperty("backend", &backend);
+
+    // Arabic UI catalog (qsTr strings; ar.qm bundled as a resource). Applied when
+    // the persisted language is "ar" and toggled live from Settings — retranslate()
+    // re-evaluates every qsTr binding, and Main.qml mirrors layout via backend.rtl.
+    static QTranslator arTranslator;
+    const bool arLoaded = arTranslator.load(":/i18n/ar.qm");
+    auto applyLanguage = [&app, &engine, arLoaded](const QString& lang) {
+        if (!arLoaded) return;
+        if (lang == "ar") app.installTranslator(&arTranslator);
+        else app.removeTranslator(&arTranslator);
+        engine.retranslate();
+    };
+    if (backend.language() == "ar" && arLoaded) app.installTranslator(&arTranslator);
+    QObject::connect(&backend, &ss::ui::Backend::languageChanged, &app,
+                     [&backend, applyLanguage] { applyLanguage(backend.language()); });
 
     // Surface QML load failures explicitly instead of silently exiting.
     QObject::connect(&engine, &QQmlApplicationEngine::objectCreationFailed, &app,

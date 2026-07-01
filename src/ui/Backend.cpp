@@ -74,6 +74,9 @@ void Backend::setLanguage(const QString& lang) {
     language_ = lang;
     settings::setLanguage(lang.toStdString());   // persist (parity with set_language)
     emit languageChanged();
+    // qsTr bindings retranslate live (main.cpp), but model rows carry tr()'d data
+    // baked in at scan time ("Unmapped") — rebuild them in the new language.
+    refresh();
 }
 
 void Backend::completeOnboarding() {
@@ -174,7 +177,7 @@ void Backend::buildState() {
                 r.accountColor = QColor(storeColor(g.store));
             } else {
                 r.mapped = false;
-                r.accountName = "Unmapped";
+                r.accountName = tr("Unmapped");
                 r.accountColor = QColor(kUnmappedColor);
             }
             rows.push_back(std::move(r));

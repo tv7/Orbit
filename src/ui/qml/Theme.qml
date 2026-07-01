@@ -39,10 +39,12 @@ QtObject {
     readonly property int rMd: 10
     readonly property int rLg: 13
 
-    // type — matches the design (Space Grotesk headings, Manrope body).
-    readonly property string fontDisplay: "Space Grotesk"
-    readonly property string fontBody:    "Manrope"
+    // type — matches the design (Space Grotesk headings, Manrope body). Cairo
+    // carries the Arabic glyphs (the Latin faces have none), so the whole face
+    // switches with the language; Cairo's own Latin set keeps mixed lines even.
     readonly property string fontArabic:  "Cairo"
+    readonly property string fontDisplay: backend.rtl ? fontArabic : "Space Grotesk"
+    readonly property string fontBody:    backend.rtl ? fontArabic : "Manrope"
 
     // Per-game glow palette. Real covers don't carry a color, so we derive a stable
     // accent from the game id (hash) — same vivid, moody range as the design.
