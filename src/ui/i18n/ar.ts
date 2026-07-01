@@ -149,62 +149,67 @@
         <translation>ابحث في مكتبتك</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="97" />
+        <location filename="../qml/LibraryView.qml" line="82" />
+        <source>Rescan library</source>
+        <translation>إعادة فحص المكتبة</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryView.qml" line="98" />
         <source>Launch offline</source>
         <translation>تشغيل بلا اتصال</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="99" />
+        <location filename="../qml/LibraryView.qml" line="100" />
         <source>Steam only</source>
         <translation>‏Steam فقط</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="114" />
+        <location filename="../qml/LibraryView.qml" line="115" />
         <source>Your library</source>
         <translation>مكتبتك</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="117" />
+        <location filename="../qml/LibraryView.qml" line="118" />
         <source> of </source>
         <translation> من </translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="117" />
+        <location filename="../qml/LibraryView.qml" line="118" />
         <source> games</source>
         <translation> لعبة</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="127" />
+        <location filename="../qml/LibraryView.qml" line="128" />
         <source>All stores</source>
         <translation>كل المتاجر</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="149" />
+        <location filename="../qml/LibraryView.qml" line="150" />
         <source>All accounts</source>
         <translation>كل الحسابات</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="163" />
+        <location filename="../qml/LibraryView.qml" line="164" />
         <source>Unmapped</source>
         <translation>غير مرتبطة</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="202" />
+        <location filename="../qml/LibraryView.qml" line="203" />
         <source>No games installed</source>
         <translation>لا توجد ألعاب مثبتة</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="202" />
+        <location filename="../qml/LibraryView.qml" line="203" />
         <source>No games found</source>
         <translation>لا توجد نتائج</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="207" />
+        <location filename="../qml/LibraryView.qml" line="208" />
         <source>Install a game in Steam, Epic, GOG or Game Pass and it will show up here.</source>
         <translation>ثبّت لعبة في Steam أو Epic أو GOG أو Game Pass وستظهر هنا.</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="208" />
+        <location filename="../qml/LibraryView.qml" line="209" />
         <source>Nothing matches the current search and filters.</source>
         <translation>لا شيء يطابق البحث والتصفية الحالية.</translation>
     </message>
@@ -459,7 +464,7 @@
 <context>
     <name>ss::ui::Backend</name>
     <message>
-        <location filename="../Backend.cpp" line="177" />
+        <location filename="../Backend.cpp" line="180" />
         <source>Unmapped</source>
         <translation>غير مرتبطة</translation>
     </message>

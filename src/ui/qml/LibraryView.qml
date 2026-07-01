@@ -58,18 +58,16 @@ Item {
                 radius: 10
                 color: refreshHover.containsMouse ? Qt.rgba(0.11, 0.13, 0.17, 0.9) : Theme.input
                 border.width: 1; border.color: Qt.rgba(1, 1, 1, 0.1)
-                Canvas {
+                // Font glyph, not Canvas — several hand-drawn arrow attempts
+                // rendered wrong on the real display; the Unicode refresh arrow
+                // always looks right (Windows falls back to Segoe UI Symbol).
+                Label {
                     id: refreshIcon
                     anchors.centerIn: parent
-                    width: 18; height: 18
-                    property color stroke: refreshHover.containsMouse ? "#fff" : Theme.muted
-                    onStrokeChanged: requestPaint()
-                    onPaint: { var c = getContext("2d"); c.reset();
-                        c.strokeStyle = stroke; c.lineWidth = 1.9; c.lineCap = "round";
-                        c.beginPath(); c.arc(9, 9, 6.4, Math.PI*1.15, Math.PI*0.15); c.stroke();
-                        c.beginPath(); c.arc(9, 9, 6.4, Math.PI*0.15+Math.PI, Math.PI*1.15+Math.PI); c.stroke();
-                        c.beginPath(); c.moveTo(15, 3.4); c.lineTo(15.4, 7.2); c.lineTo(11.7, 6.6); c.stroke();
-                        c.beginPath(); c.moveTo(3, 14.6); c.lineTo(2.6, 10.8); c.lineTo(6.3, 11.4); c.stroke(); }
+                    text: "⟳"   // ⟳ clockwise gapped circle arrow
+                    font.pixelSize: 21
+                    font.weight: Font.Bold
+                    color: refreshHover.containsMouse ? "#fff" : Theme.muted
                     transformOrigin: Item.Center
                     RotationAnimation on rotation {
                         running: backend.scanning; loops: Animation.Infinite
@@ -79,6 +77,9 @@ Item {
                 }
                 MouseArea { id: refreshHover; anchors.fill: parent; hoverEnabled: true
                     cursorShape: Qt.PointingHandCursor; onClicked: backend.refresh() }
+                ToolTip.visible: refreshHover.containsMouse
+                ToolTip.delay: 600
+                ToolTip.text: qsTr("Rescan library")
             }
 
             // offline toggle
