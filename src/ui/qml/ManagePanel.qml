@@ -79,7 +79,7 @@ Item {
                 Layout.fillWidth: true; Layout.fillHeight: true
                 contentHeight: body.implicitHeight + 44
                 clip: true
-                ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+                ScrollBar.vertical: AppScrollBar {}
 
                 ColumnLayout {
                     id: body

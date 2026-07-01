@@ -25,7 +25,7 @@ Item {
         anchors.fill: parent
         contentHeight: content.implicitHeight + 74
         clip: true
-        ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+        ScrollBar.vertical: AppScrollBar {}
 
         ColumnLayout {
             id: content

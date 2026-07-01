@@ -189,7 +189,7 @@ Item {
                     height: parent.height - gv.gap
                 }
             }
-            ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+            ScrollBar.vertical: AppScrollBar {}
 
             // empty / no-results state
             Item {

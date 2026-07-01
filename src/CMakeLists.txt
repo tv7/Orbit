@@ -74,6 +74,7 @@ if(Qt6_FOUND)
             ui/qml/Theme.qml
             ui/qml/AppState.qml
             ui/qml/AmbientBackground.qml
+            ui/qml/AppScrollBar.qml
             ui/qml/SideNavItem.qml
             ui/qml/StoreChip.qml
             ui/qml/Toggle.qml

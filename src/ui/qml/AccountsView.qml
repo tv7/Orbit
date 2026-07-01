@@ -10,7 +10,7 @@ Flickable {
     id: root
     contentHeight: col.implicitHeight + 78
     clip: true
-    ScrollBar.vertical: ScrollBar { policy: ScrollBar.AsNeeded }
+    ScrollBar.vertical: AppScrollBar {}
 
     ColumnLayout {
         id: col
