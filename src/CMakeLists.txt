@@ -12,13 +12,16 @@ set(CORE_SOURCES
     core/json.cpp
     core/http.cpp
     core/appdata.cpp
+    core/settings.cpp
     core/steam_paths.cpp
     core/steam_games.cpp
     core/steam_accounts.cpp
     core/steam_switcher.cpp
     core/steam_launcher.cpp
     core/covers.cpp
+    core/epic_games.cpp
     core/stores/steam_store.cpp
+    core/stores/epic_store.cpp
 )
 if(WIN32)
     list(APPEND CORE_SOURCES core/platform_win.cpp)

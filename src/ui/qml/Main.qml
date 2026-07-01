@@ -14,7 +14,7 @@ ApplicationWindow {
     title: "SteamSwitch"
     color: Theme.bg
 
-    property bool rtl: false
+    property bool rtl: backend.rtl        // driven by the persisted language (ar = RTL)
     LayoutMirroring.enabled: rtl
     LayoutMirroring.childrenInherit: true
 

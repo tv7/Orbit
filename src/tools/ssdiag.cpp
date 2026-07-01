@@ -6,11 +6,13 @@
 //   ssdiag paths      ~ python -m core.steam_paths
 //   ssdiag games      ~ python -m core.games
 //   ssdiag accounts   ~ python -m core.accounts   (mapping + how each game resolved)
+//   ssdiag epic         list installed Epic games + their launch URIs
 //   ssdiag covers <id>  resolve one cover (prints byte count / source)
 //
 // Build with the core sources + platform_{win,posix}.cpp.
 
 #include "../core/covers.h"
+#include "../core/epic_games.h"
 #include "../core/model.h"
 #include "../core/steam_accounts.h"
 #include "../core/steam_games.h"
@@ -76,6 +78,15 @@ static void cmdAccounts() {
     }
 }
 
+static void cmdEpic() {
+    std::printf("Epic manifests: %s\n\n", epic::manifestsDir().string().c_str());
+    auto games = epic::installedGames();
+    if (games.empty()) { std::printf("(no installed Epic games found)\n"); return; }
+    for (const auto& g : games)
+        std::printf("%-40s%s\n    launch: %s\n", g.name.c_str(),
+                    g.fullyInstalled ? "" : "  (partial)", epic::launchUri(g.launchId).c_str());
+}
+
 static void cmdCovers(int64_t appid) {
     auto bytes = covers::coverBytes(appid);
     if (bytes) std::printf("cover %lld: %zu bytes\n", (long long)appid, bytes->size());
@@ -87,7 +98,8 @@ int main(int argc, char** argv) {
     if (cmd == "paths") cmdPaths();
     else if (cmd == "games") cmdGames();
     else if (cmd == "accounts") cmdAccounts();
+    else if (cmd == "epic") cmdEpic();
     else if (cmd == "covers" && argc > 2) cmdCovers(std::stoll(argv[2]));
-    else { std::printf("usage: ssdiag [paths|games|accounts|covers <appid>]\n"); return 2; }
+    else { std::printf("usage: ssdiag [paths|games|accounts|epic|covers <appid>]\n"); return 2; }
     return 0;
 }

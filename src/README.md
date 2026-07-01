@@ -9,7 +9,7 @@ repo `CLAUDE.md`); the other stores (Epic/GOG/Xbox) are added on top.
 
 | Path | Role |
 |------|------|
-| `core/` | Pure C++ engine, **no Qt** — headless + unit-testable. VDF/JSON parsers, OS platform layer, Steam paths/games/accounts/switcher/launcher/covers, the `IStore` interface + `SteamStore`. |
+| `core/` | Pure C++ engine, **no Qt** — headless + unit-testable. VDF/JSON parsers, OS platform layer, Steam paths/games/accounts/switcher/launcher/covers, Epic enumeration (`epic_games.*`), the `IStore` interface + `SteamStore`/`EpicStore`. |
 | `core/platform_{win,posix}.cpp` | OS specifics: registry, process control, `EnumWindows`, `ShellExecute`/`xdg-open`. Windows is the real one; POSIX mirrors the Python stubs. |
 | `core/http.{h,cpp}` | Injectable HTTP — the host installs a fetcher so `core/` stays Qt-free (the Qt UI installs a `QNetwork` one; tests inject a stub). |
 | `ui/` | Qt 6 + QML. `Backend` (the in-process replacement for `server.py`+`bridge.js`), `GameModel`, `QtFetcher`, and `qml/` views. |
@@ -68,10 +68,18 @@ is already byte-identical.)
 - **Done + tested headless:** VDF, JSON, Steam paths/games/accounts (with the
   family-share playtime tiebreak), switcher (loginusers/config writes, offline
   flag, backups, `can_autologin`), launcher (online + offline flag method), cover
-  resolver, `IStore`/`SteamStore`, `ssdiag`. 24 core tests pass; ssdiag output
+  resolver, `IStore`/`SteamStore`, `ssdiag`. 29 core tests pass; ssdiag output
   matches the Python diagnostic.
+- **Epic store — done + tested headless:** `core/epic_games.*` enumerates installed
+  games from the launcher's `*.item` manifests
+  (`%PROGRAMDATA%\Epic\EpicGamesLauncher\Data\Manifests`, override with
+  `$SS_EPIC_MANIFESTS`), filters DLC/addons, and `stores/epic_store.cpp` launches via
+  `com.epicgames.launcher://apps/<AppName>?action=launch&silent=true` (no account
+  switching). `Backend` aggregates it alongside Steam; non-Steam games get a stable
+  synthetic id so the appid-keyed UI can address them. Verify on real hardware with
+  `ssdiag epic`.
 - **Written, builds on Windows w/ Qt (not yet run here — no Qt/display in sandbox):**
   the Qt/QML UI (grid, covers, search/filter, accounts hub, launch/cancel, offline,
-  RTL scaffolding).
-- **Next:** Epic / GOG / Xbox stores (implement `IStore`), then `windeployqt`
+  RTL scaffolding), settings/language persistence, store-routed launching.
+- **Next:** GOG / Xbox stores (implement `IStore`), then `windeployqt`
   portable-zip packaging, then retire the Python/Tauri stack.

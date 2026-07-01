@@ -17,7 +17,9 @@
 #include <QVariantList>
 
 #include <atomic>
+#include <map>
 #include <memory>
+#include <mutex>
 #include <vector>
 
 namespace ss::ui {
@@ -30,6 +32,8 @@ class Backend : public QObject {
     Q_PROPERTY(int gameCount READ gameCount NOTIFY stateChanged)
     Q_PROPERTY(bool scanning READ scanning NOTIFY scanningChanged)
     Q_PROPERTY(bool launching READ launching NOTIFY launchingChanged)
+    Q_PROPERTY(QString language READ language NOTIFY languageChanged)
+    Q_PROPERTY(bool rtl READ rtl NOTIFY languageChanged)
 
 public:
     explicit Backend(QObject* parent = nullptr);
@@ -40,6 +44,8 @@ public:
     int gameCount() const { return model_.rowCount(); }
     bool scanning() const { return scanning_; }
     bool launching() const { return launching_; }
+    QString language() const { return language_; }
+    bool rtl() const { return language_ == "ar"; }
 
     // ---- invoked from QML (each returns immediately, works off-thread) ----
     Q_INVOKABLE void refresh();                       // ~ request_state
@@ -52,11 +58,13 @@ public:
     Q_INVOKABLE void setSearch(const QString& text);
     Q_INVOKABLE void setAccountFilter(const QString& filter);
     Q_INVOKABLE void setSortOrder(const QString& order);   // "az" | "za"
+    Q_INVOKABLE void setLanguage(const QString& lang);     // ~ set_language (persists)
 
 signals:
     void stateChanged();
     void scanningChanged();
     void launchingChanged();
+    void languageChanged();
     void coverReady(qint64 appid, const QString& dataUrl);
     void launchStarted();
     void status(const QString& message);
@@ -73,6 +81,19 @@ private:
     QString currentAccount_;
     bool scanning_ = false;
     bool launching_ = false;
+    QString language_;
+
+    // A game's identity for launch/cover routing. Steam games are keyed by their
+    // real appid; non-Steam stores (Epic, …) have no numeric id, so Backend hands
+    // them a stable synthetic id (see buildState) and routes by `store`/`launchId`.
+    struct GameRef {
+        Store store = Store::Steam;
+        qint64 appid = 0;          // real Steam appid, or 0 for non-Steam
+        QString launchId;          // store-specific token (Epic AppName, …)
+        QString name;
+    };
+    std::map<qint64, GameRef> gameIndex_;   // synthetic-or-real id -> game, for play/cover
+    std::mutex indexMutex_;
 
     std::vector<std::unique_ptr<IStore>> stores_;
     std::atomic<bool> cancel_{false};
