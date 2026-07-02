@@ -52,8 +52,8 @@ int main(int argc, char* argv[]) {
              ":/fonts/hanken-grotesk-400.ttf", ":/fonts/hanken-grotesk-500.ttf",
              ":/fonts/hanken-grotesk-600.ttf", ":/fonts/hanken-grotesk-700.ttf",
              ":/fonts/geist-500.ttf", ":/fonts/geist-600.ttf",
-             ":/fonts/cairo-arabic-400.ttf", ":/fonts/cairo-arabic-600.ttf",
-             ":/fonts/cairo-arabic-700.ttf"})
+             ":/fonts/plex-arabic-400.ttf", ":/fonts/plex-arabic-600.ttf",
+             ":/fonts/plex-arabic-700.ttf"})
         QFontDatabase::addApplicationFont(f);
     {
         QFont base("Manrope");

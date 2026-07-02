@@ -110,7 +110,7 @@ is already byte-identical.)
   status + Steam multi-account list + add-account). Each game gets a stable derived
   accent (from its id) driving the ambient backdrop + placeholder gradient; real
   cover art layers on top. Typography is **Space Grotesk (display) + Manrope (body)**,
-  instanced to static TTFs and bundled (Cairo covers Arabic). Backend gained a
+  instanced to static TTFs and bundled (IBM Plex Sans Arabic covers Arabic). Backend gained a
   `stores` model + a store filter on the proxy. Also a **first-run onboarding
   overlay** (`OnboardingOverlay.qml`: Welcome → Connect → Done) shown once, tracked
   by a new `onboarded` flag in `settings.json` (`core/settings.*` +

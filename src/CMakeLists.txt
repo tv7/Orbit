@@ -101,8 +101,9 @@ if(Qt6_FOUND)
             ui/qml/OnboardingOverlay.qml
     )
     # Bundle the UI fonts into the binary so the typography ships without any system
-    # install. ORBIT uses Space Grotesk (display) + Manrope (body); Cairo covers
-    # Arabic. (Hanken Grotesk / Geist kept as fallbacks from the earlier build.)
+    # install. ORBIT uses Space Grotesk (display) + Manrope (body); IBM Plex Sans
+    # Arabic covers Arabic. (Hanken Grotesk / Geist kept as fallbacks from the
+    # earlier build.)
     # App icon PNGs for QML/QIcon use (window icon, in-UI brand marks). Generated
     # by tools/make_orbit_icon.py (also packs ui/icons/orbit.ico for the .rc).
     qt_add_resources(Orbit "appicons"
@@ -135,9 +136,9 @@ if(Qt6_FOUND)
             ui/fonts/hanken-grotesk-700.ttf
             ui/fonts/geist-500.ttf
             ui/fonts/geist-600.ttf
-            ui/fonts/cairo-arabic-400.ttf
-            ui/fonts/cairo-arabic-600.ttf
-            ui/fonts/cairo-arabic-700.ttf
+            ui/fonts/plex-arabic-400.ttf
+            ui/fonts/plex-arabic-600.ttf
+            ui/fonts/plex-arabic-700.ttf
     )
     # Arabic UI catalog. ar.qm is prebuilt from ar.ts and committed, so building
     # the app needs no Qt LinguistTools. Regenerate after changing UI strings:

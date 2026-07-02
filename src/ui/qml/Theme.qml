@@ -34,10 +34,11 @@ QtObject {
     readonly property int rMd: 12
     readonly property int rLg: 16
 
-    // type — Space Grotesk headings, Manrope body. Cairo carries the Arabic
-    // glyphs (the Latin faces have none), so the whole face switches with the
-    // language; Cairo's own Latin set keeps mixed lines even.
-    readonly property string fontArabic:  "Cairo"
+    // type — Space Grotesk headings, Manrope body. IBM Plex Sans Arabic carries
+    // the Arabic glyphs (the Latin faces have none), so the whole face switches
+    // with the language; its own Latin set keeps mixed lines even. (Replaced
+    // Cairo, whose letter spacing/joining rendered poorly here.)
+    readonly property string fontArabic:  "IBM Plex Sans Arabic"
     readonly property string fontDisplay: backend.rtl ? fontArabic : "Space Grotesk"
     readonly property string fontBody:    backend.rtl ? fontArabic : "Manrope"
 
