@@ -133,7 +133,7 @@ Item {
                                     color: Qt.rgba(0.4, 0.753, 0.957, 0.14)
                                     Label { id: multi; anchors.centerIn: parent; text: qsTr("MULTI")
                                         color: "#66c0f4"; font.family: Theme.fontBody
-                                        font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: 0.6 } }
+                                        font.pixelSize: 8; font.weight: Font.Bold; font.letterSpacing: Theme.tracking(0.6) } }
                             }
                             Label { text: root.descByKey[modelData.key] || ""
                                 color: Theme.faint; font.family: Theme.fontBody; font.pixelSize: 12

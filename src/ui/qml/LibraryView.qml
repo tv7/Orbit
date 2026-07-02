@@ -115,7 +115,7 @@ Item {
                             : ""
                         color: root.heroStore ? root.heroStore.color : Theme.muted
                         font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.ExtraBold
-                        font.letterSpacing: 2.2
+                        font.letterSpacing: Theme.tracking(2.2)
                     }
                     Label {
                         Layout.topMargin: 10

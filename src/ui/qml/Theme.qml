@@ -56,6 +56,10 @@ QtObject {
     function accentFor(id)  { return glowPalette[glowIndex(id)]; }
     function coverBottom(id) { return Qt.rgba(0.03, 0.04, 0.07, 1); }
 
+    // Letter-spacing for kickers/section labels. Tracking breaks Arabic letter
+    // JOINING (the script renders disconnected), so it collapses to 0 under RTL.
+    function tracking(px) { return backend.rtl ? 0 : px }
+
     // Readable foreground for a solid color (luminance threshold).
     function fgOn(hex) {
         var c = Qt.color(hex);

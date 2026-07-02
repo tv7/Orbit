@@ -27,7 +27,7 @@ Flickable {
     component SectLabel: Label {
         color: Theme.faint
         font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.ExtraBold
-        font.letterSpacing: 2
+        font.letterSpacing: Theme.tracking(2)
     }
     component Card: Rectangle {
         default property alias content: inner.data
@@ -116,7 +116,10 @@ Flickable {
 
     ColumnLayout {
         id: col
-        x: 44; y: 92
+        // Plain x never mirrors with LayoutMirroring — compute it, so the capped
+        // column hugs the right edge under RTL instead of sticking left.
+        x: backend.rtl ? root.width - width - 44 : 44
+        y: 92
         width: Math.min(root.width - 88, 860)
         spacing: 0
 

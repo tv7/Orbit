@@ -128,7 +128,7 @@ Item {
                         Label { text: root.storeMeta.short
                             color: root.storeColor
                             font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.ExtraBold
-                            font.letterSpacing: 2.2
+                            font.letterSpacing: Theme.tracking(2.2)
                             anchors.verticalCenter: parent.verticalCenter }
                         Rectangle { visible: root.game !== null && root.game.store === "Steam"
                             width: 8; height: 8; radius: 4
@@ -138,7 +138,7 @@ Item {
                             text: root.game ? root.game.accountName.toUpperCase() : ""
                             color: Theme.muted
                             font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.ExtraBold
-                            font.letterSpacing: 2.2
+                            font.letterSpacing: Theme.tracking(2.2)
                             anchors.verticalCenter: parent.verticalCenter }
                     }
 
@@ -326,7 +326,7 @@ Item {
         Layout.topMargin: 11; Layout.bottomMargin: 11
         Label { text: parent.k; color: Theme.faint
             font.family: Theme.fontBody; font.pixelSize: 10; font.weight: Font.ExtraBold
-            font.letterSpacing: 1 }
+            font.letterSpacing: Theme.tracking(1) }
         Item { Layout.fillWidth: true }
         Label { text: parent.v; color: parent.vColor
             font.family: Theme.fontBody; font.pixelSize: 12; font.weight: Font.Bold }

@@ -28,7 +28,10 @@ Flickable {
 
     ColumnLayout {
         id: col
-        x: 44; y: 92
+        // Plain x never mirrors with LayoutMirroring (symmetric today since the
+        // column fills the width, but keep it correct if that changes).
+        x: backend.rtl ? root.width - width - 44 : 44
+        y: 92
         width: root.width - 88
         spacing: 0
 
@@ -67,7 +70,7 @@ Flickable {
                 anchors.verticalCenter: parent.verticalCenter }
             Label { text: qsTr("STEAM — MULTI-ACCOUNT"); color: Theme.faint
                 font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.ExtraBold
-                font.letterSpacing: 2 }
+                font.letterSpacing: Theme.tracking(2) }
         }
 
         Flow {
@@ -199,7 +202,7 @@ Flickable {
             Layout.topMargin: 30; Layout.bottomMargin: 14
             text: qsTr("OTHER STORES — AUTO-DETECTED"); color: Theme.faint
             font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.ExtraBold
-            font.letterSpacing: 2
+            font.letterSpacing: Theme.tracking(2)
         }
         RowLayout {
             Layout.fillWidth: true
