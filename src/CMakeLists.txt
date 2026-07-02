@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(SteamSwitch LANGUAGES CXX)
+project(Orbit LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -56,18 +56,22 @@ add_test(NAME sstests COMMAND sstests)
 find_package(Qt6 COMPONENTS Core Gui Quick Network QUIET)
 if(Qt6_FOUND)
     qt_standard_project_setup(REQUIRES 6.5)
-    qt_add_executable(SteamSwitch
+    qt_add_executable(Orbit
         ui/main.cpp
         ui/Backend.cpp
         ui/GameModel.cpp
         ui/GameFilterModel.cpp
         ui/QtFetcher.cpp
     )
+    # Windows: embed orbit.ico into the exe (taskbar / Explorer / Alt-Tab icon).
+    if(WIN32)
+        target_sources(Orbit PRIVATE ui/orbit.rc)
+    endif()
     # Theme.qml and AppState.qml are QML singletons.
     set_source_files_properties(ui/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
     set_source_files_properties(ui/qml/AppState.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
-    qt_add_qml_module(SteamSwitch
-        URI SteamSwitch
+    qt_add_qml_module(Orbit
+        URI Orbit
         VERSION 1.0
         QML_FILES
             ui/qml/Main.qml
@@ -89,7 +93,21 @@ if(Qt6_FOUND)
     # Bundle the UI fonts into the binary so the typography ships without any system
     # install. ORBIT uses Space Grotesk (display) + Manrope (body); Cairo covers
     # Arabic. (Hanken Grotesk / Geist kept as fallbacks from the earlier build.)
-    qt_add_resources(SteamSwitch "appfonts"
+    # App icon PNGs for QML/QIcon use (window icon, in-UI brand marks). Generated
+    # by tools/make_orbit_icon.py (also packs ui/icons/orbit.ico for the .rc).
+    qt_add_resources(Orbit "appicons"
+        PREFIX "/icons"
+        BASE "ui/icons"
+        FILES
+            ui/icons/orbit-16.png
+            ui/icons/orbit-24.png
+            ui/icons/orbit-32.png
+            ui/icons/orbit-48.png
+            ui/icons/orbit-64.png
+            ui/icons/orbit-128.png
+            ui/icons/orbit-256.png
+    )
+    qt_add_resources(Orbit "appfonts"
         PREFIX "/fonts"
         BASE "ui/fonts"
         FILES
@@ -115,15 +133,15 @@ if(Qt6_FOUND)
     # the app needs no Qt LinguistTools. Regenerate after changing UI strings:
     #   lupdate ui/qml/*.qml ui/Backend.cpp -ts ui/i18n/ar.ts   (then translate)
     #   lrelease ui/i18n/ar.ts -qm ui/i18n/ar.qm
-    qt_add_resources(SteamSwitch "translations"
+    qt_add_resources(Orbit "translations"
         PREFIX "/i18n"
         BASE "ui/i18n"
         FILES ui/i18n/ar.qm
     )
-    target_link_libraries(SteamSwitch PRIVATE sscore Qt6::Core Qt6::Gui Qt6::Quick Qt6::Network)
+    target_link_libraries(Orbit PRIVATE sscore Qt6::Core Qt6::Gui Qt6::Quick Qt6::Network)
     # TODO: flip back to ON once the UI is verified — OFF gives a console so QML
     # load errors are visible while debugging.
-    set_target_properties(SteamSwitch PROPERTIES WIN32_EXECUTABLE OFF)
+    set_target_properties(Orbit PROPERTIES WIN32_EXECUTABLE OFF)
 else()
     message(STATUS "Qt6 not found — building core + ssdiag + tests only (no GUI).")
 endif()

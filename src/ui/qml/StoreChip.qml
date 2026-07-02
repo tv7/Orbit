@@ -2,7 +2,7 @@
 // active it fills with either the store's brand color or the app accent.
 import QtQuick
 import QtQuick.Controls
-import SteamSwitch
+import Orbit
 
 Item {
     id: root

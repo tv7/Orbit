@@ -4,7 +4,7 @@
 // view-layer state the design needs (which screen, which game, overlays).
 pragma Singleton
 import QtQuick
-import SteamSwitch
+import Orbit
 
 QtObject {
     id: app

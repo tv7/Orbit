@@ -3,7 +3,7 @@
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
-import SteamSwitch
+import Orbit
 
 Item {
     id: root

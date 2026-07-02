@@ -2,7 +2,7 @@
 // active game's cover; we approximate that dependency-free with a dark vertical
 // wash plus an accent glow from the top that shifts with the current accent.
 import QtQuick
-import SteamSwitch
+import Orbit
 
 Item {
     id: root

@@ -5,7 +5,7 @@ import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
 import QtQuick.Window
-import SteamSwitch
+import Orbit
 
 ApplicationWindow {
     id: win
@@ -68,9 +68,9 @@ ApplicationWindow {
                     anchors.fill: parent
                     anchors.leftMargin: 16; anchors.rightMargin: 6
                     spacing: 10
-                    Rectangle { Layout.preferredWidth: 15; Layout.preferredHeight: 15; radius: 7.5
-                        gradient: Gradient { GradientStop { position: 0; color: "#5fb8ff" }
-                                             GradientStop { position: 1; color: "#2a7fd4" } } }
+                    Image { Layout.preferredWidth: 16; Layout.preferredHeight: 16
+                        source: "qrc:/icons/orbit-32.png"; sourceSize: Qt.size(32, 32)
+                        smooth: true; mipmap: true }
                     Label { text: "ORBIT"; color: Theme.text
                         font.family: Theme.fontDisplay; font.pixelSize: 12; font.weight: Font.Bold
                         font.letterSpacing: 1 }
@@ -109,9 +109,9 @@ ApplicationWindow {
                         RowLayout {
                             Layout.leftMargin: 4; Layout.topMargin: 4; Layout.bottomMargin: 14
                             spacing: 9
-                            Rectangle { Layout.preferredWidth: 24; Layout.preferredHeight: 24; radius: 7
-                                gradient: Gradient { GradientStop { position: 0; color: "#5fb8ff" }
-                                                     GradientStop { position: 1; color: "#2a7fd4" } } }
+                            Image { Layout.preferredWidth: 24; Layout.preferredHeight: 24
+                                source: "qrc:/icons/orbit-48.png"; sourceSize: Qt.size(48, 48)
+                                smooth: true; mipmap: true }
                             Label { text: "ORBIT"; color: Theme.text
                                 font.family: Theme.fontDisplay; font.pixelSize: 15; font.weight: Font.Bold
                                 font.letterSpacing: 0.8 }

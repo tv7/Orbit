@@ -1,7 +1,7 @@
 // Pill toggle switch, styled to the ORBIT design. `on` is the state; emits
 // toggled() on click (the parent owns the value).
 import QtQuick
-import SteamSwitch
+import Orbit
 
 Item {
     id: root

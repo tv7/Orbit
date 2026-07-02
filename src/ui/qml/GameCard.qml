@@ -3,7 +3,7 @@
 // cover. Click opens the detail screen; right-click launches directly.
 import QtQuick
 import QtQuick.Controls
-import SteamSwitch
+import Orbit
 
 Item {
     id: card

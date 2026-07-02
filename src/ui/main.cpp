@@ -1,4 +1,4 @@
-// SteamSwitch entry point. Inits Qt, installs the QNetwork HTTP fetcher into the
+// ORBIT entry point. Inits Qt, installs the QNetwork HTTP fetcher into the
 // core, exposes the Backend to QML, and loads the UI. No sidecar, no web view —
 // the whole app is this one native process.
 
@@ -11,6 +11,7 @@
 #include <QFont>
 #include <QFontDatabase>
 #include <QGuiApplication>
+#include <QIcon>
 #include <QQmlApplicationEngine>
 #include <QQmlContext>
 #include <QTextStream>
@@ -28,9 +29,18 @@ static void logToFile(QtMsgType, const QMessageLogContext&, const QString& msg) 
 
 int main(int argc, char* argv[]) {
     QGuiApplication app(argc, argv);
-    app.setOrganizationName("SteamSwitch");
-    app.setApplicationName("SteamSwitch");
+    app.setOrganizationName("ORBIT");
+    app.setApplicationName("ORBIT");
     qInstallMessageHandler(logToFile);
+
+    // Window/taskbar icon (Alt-Tab, titlebar). The exe's Explorer icon comes from
+    // the .rc-embedded orbit.ico; this covers the runtime side.
+    {
+        QIcon icon;
+        for (int s : {16, 24, 32, 48, 64, 128, 256})
+            icon.addFile(QString(":/icons/orbit-%1.png").arg(s), QSize(s, s));
+        app.setWindowIcon(icon);
+    }
 
     // Load the bundled UI fonts and make Manrope the default (ORBIT body font), so
     // the look matches the design instead of falling back to a system font.
@@ -80,7 +90,7 @@ int main(int argc, char* argv[]) {
     QObject::connect(&engine, &QQmlApplicationEngine::warnings, &app,
                      [](const QList<QQmlError>& ws) { for (const auto& w : ws) qWarning("%s", qPrintable(w.toString())); });
 
-    engine.loadFromModule("SteamSwitch", "Main");
+    engine.loadFromModule("Orbit", "Main");
     if (engine.rootObjects().isEmpty()) {
         qWarning("No root QML object created — startup aborted.");
         return -1;
