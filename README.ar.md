@@ -21,7 +21,7 @@
 
 ## ⬇️ التنزيل وطريقة الاستخدام
 
-**نزّل آخر إصدار من هنا ← [Releases](https://github.com/tv7/steam-switch/releases/latest)**
+**نزّل آخر إصدار من هنا ← [Releases](https://github.com/tv7/Orbit/releases/latest)**
 
 1. نزّل ملف **`Orbit-portable.zip`**.
 2. فُكّ الضغط في أي مكان (سطح المكتب، أي قرص، حتى فلاشة USB).

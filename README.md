@@ -31,7 +31,7 @@ your Epic, GOG and Game Pass installs in the same library. Plus a one-click
 
 ## ⬇️ Download
 
-**Grab the latest release → [Releases](https://github.com/tv7/steam-switch/releases/latest)**
+**Grab the latest release → [Releases](https://github.com/tv7/Orbit/releases/latest)**
 
 1. Download **`Orbit-portable.zip`**.
 2. Unzip it anywhere (Desktop, `D:\Apps\Orbit`, a USB stick — doesn't matter).
