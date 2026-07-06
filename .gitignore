@@ -1,23 +1,17 @@
-# Python
+# Local tooling (promo/ is deliberately never committed; Python only remains
+# for local scripts like src/tools/make_orbit_icon.py and promo/)
 __pycache__/
 *.py[cod]
+promo/
 
-# PyInstaller build output
+# Build output (CMake/Qt)
 build/
 dist/
-*.spec
 
-# Generated/local data (account map cache, downloaded cover art, UI settings)
-data/covers/
-data/mapping.json
-data/settings.json
+# Generated/local data (cover cache, settings)
+data/
 
-# Tauri / Rust build output
-src-tauri/target/
-src-tauri/gen/
-src-tauri/icons/
-
-# Dev/debug artifacts (screenshots, logs, browser-automation output, promo capture)
+# Dev/debug artifacts (screenshots, logs, captured scenes)
 /*.png
 /*.log
 /*.html

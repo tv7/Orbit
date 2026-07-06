@@ -124,8 +124,9 @@ launcher per store behind an `IStore` interface) under a **Qt 6 / QML** UI
 ORBIT started life as **SteamSwitch**, a Tauri (Rust) shell + Python sidecar +
 HTML/CSS UI, Steam-only. The C++ core is a behaviour-faithful port of that app's
 Python `core/` (validated byte-identical on real hardware), with Epic/GOG/Xbox
-added on top. The legacy stack (`core/`, `server.py`, `src-tauri/`, `web/`) is
-still in the tree as the reference implementation and will be removed.
+added on top. The legacy stack (`core/`, `server.py`, `src-tauri/`, `web/`) was
+removed after v1.0.0 — browse it at the
+[`v1.0.0` tag](https://github.com/tv7/Orbit/tree/v1.0.0) if you need it.
 
 </details>
 

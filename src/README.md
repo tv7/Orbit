@@ -2,9 +2,10 @@
 
 Native C++ multi-store launcher, officially named **ORBIT** (formerly SteamSwitch;
 the CMake target / exe is `Orbit`, the QML module URI is `Orbit`, and the core
-keeps its `ss::` namespaces). Replaces the Python `core/` + Tauri shell +
-`server.py` sidecar + `web/` UI with a single Qt 6 application. The Steam logic is
-a **behaviour-faithful port** of the Python `core/` (same constraints — see the
+keeps its `ss::` namespaces). Replaced the Python `core/` + Tauri shell +
+`server.py` sidecar + `web/` UI with a single Qt 6 application; the legacy stack
+was deleted after v1.0.0 (browse it at the `v1.0.0` tag). The Steam logic is
+a **behaviour-faithful port** of that Python `core/` (same constraints — see the
 repo `CLAUDE.md`); the other stores (Epic/GOG/Xbox) are added on top.
 
 ## Layout
@@ -15,7 +16,7 @@ repo `CLAUDE.md`); the other stores (Epic/GOG/Xbox) are added on top.
 | `core/platform_{win,posix}.cpp` | OS specifics: registry, process control, `EnumWindows`, `ShellExecute`/`xdg-open`. Windows is the real one; POSIX mirrors the Python stubs. |
 | `core/http.{h,cpp}` | Injectable HTTP — the host installs a fetcher so `core/` stays Qt-free (the Qt UI installs a `QNetwork` one; tests inject a stub). |
 | `ui/` | Qt 6 + QML. `Backend` (the in-process replacement for `server.py`+`bridge.js`), `GameModel`, `QtFetcher`, and `qml/` views. `ui/icons/` holds the generated app icon (PNGs + `orbit.ico`, embedded via `ui/orbit.rc`); regenerate with `tools/make_orbit_icon.py` (PIL). |
-| `tools/ssdiag.cpp` | Headless diagnostic CLI — the Phase 1 parity gate (`ssdiag accounts` ≈ `python -m core.accounts`). |
+| `tools/ssdiag.cpp` | Headless diagnostic CLI (`ssdiag accounts|games|epic|gog|xbox|covers|storecovers`) — was the Phase 1 parity gate against the Python app. |
 | `tests/` | Header-only test harness + cases against a synthetic Steam tree (no real Steam). |
 
 ## Build
@@ -47,23 +48,16 @@ Or straight with the compiler (what the dev sandbox uses):
 
 ```
 g++ -std=c++17 -Isrc src/tests/*.cpp \
-    src/core/*.cpp src/core/stores/*.cpp src/core/platform_posix.cpp -o /tmp/sstests && /tmp/sstests
+    src/core/*.cpp src/core/stores/*.cpp -o /tmp/sstests && /tmp/sstests
 ```
 
-## Verifying the Steam port (parity gate)
+## Verifying the Steam port (parity gate — historical)
 
-`ssdiag` and the Python tools both honour `$STEAM_ROOT`, so they can be run against
-the same tree and diffed:
-
-```
-STEAM_ROOT=/path/to/steam ./build/ssdiag accounts > cpp.txt
-STEAM_ROOT=/path/to/steam python3 -m core.accounts > py.txt
-diff cpp.txt py.txt          # must be empty
-```
-
-This must match on the user's real PC before the Qt UI is trusted over the Python
-app. (On a synthetic tree, including the family-share playtime tiebreak, the output
-is already byte-identical.)
+The port was validated by diffing `ssdiag accounts` against the Python app's
+`python -m core.accounts` on the same `$STEAM_ROOT` — byte-identical on a synthetic
+tree AND on the user's real PC ("FC: no differences"), which is when the C++ core
+was trusted over the Python one. The Python app has since been deleted; to re-run
+the comparison, check out the `v1.0.0` tag, which contains both stacks.
 
 ## Status
 
@@ -151,5 +145,5 @@ is already byte-identical.)
   Settings run-at-startup writes/removes `HKCU\...\CurrentVersion\Run\ORBIT`;
   cover-cache size/clear; Arabic/RTL across the new screens; frameless
   drag/resize still works with the new top bar.
-- **Next:** `windeployqt` portable-zip packaging, then retire the Python/Tauri
-  stack.
+- **Shipped:** v1.0.0 released as `Orbit-portable.zip` (windeployqt); the legacy
+  Python/Tauri stack is deleted from the tree (last present at the `v1.0.0` tag).
