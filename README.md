@@ -2,32 +2,32 @@
 
 # ORBIT
 
-**Every game installed on your PC — Steam, Epic, GOG and Xbox Game Pass — in one
-native window. Click a game and it launches; if it lives on another Steam account,
-ORBIT switches to that account, logs in, and launches it for you.**
+**One launcher for every game on your PC. ORBIT auto-detects everything installed
+from Steam, Epic Games, GOG and Xbox Game Pass and puts it all in a single fast,
+native library — click a game and it launches through the right store, every time.**
 
-![ORBIT in action: one multi-store library; clicking a Steam game switches accounts and launches it](assets/demo.gif)
+![ORBIT in action: one library for all your stores — click a game and it launches](assets/demo.gif)
 
-> Click *Grand Theft Auto V* → ORBIT swaps Steam to the account that owns it, waits
-> for the login, and the game opens. One click, no manual account swapping, no
-> retyping logins.
+Four launchers, four logins, four windows just to see what you own — ORBIT replaces
+the daily juggling with one window: your whole library, real cover art, playtime,
+and a `Ctrl+K` palette to jump to any game.
 
-Most Steam account switchers are *account-first*: pick an account, log in, then go
-find your game. ORBIT is *game-first* — it maps every installed Steam game to its
-owning account automatically (read from Steam's local data, no API key), and puts
-your Epic, GOG and Game Pass installs in the same library. Plus a one-click
-**offline mode** that handles Steam's offline-mode dance for you.
-
-- **No password handling** — it never types or stores your password; it rides
-  Steam's own saved logins ("Remember me"), so it's as safe as Steam's normal login.
-- **Nothing fabricated** — the library shows only what's really detected on your
-  disk: real installs, real owners, real playtime.
-- **Safe by default** — backs up `loginusers.vdf` before the first write; all data
-  stays local.
+- **One library, four stores** — Steam, Epic, GOG and Game Pass installs detected
+  automatically. No accounts to connect, no setup.
+- **Click and play** — each game launches the way its store expects; you never
+  think about *where* a game came from again.
+- **Nothing fabricated** — the library shows only what's really on your disk: real
+  installs, real owners, real playtime.
+- **Multi-account Steam, solved** — got games spread across Steam accounts? ORBIT
+  knows which account owns each game and switches to it for you on launch
+  ([details below](#steam-extras-account-switching--offline-mode)).
+- **Offline mode** — one click to play a Steam game offline, handled correctly.
+- **Private by design** — never sees your passwords, no server, no telemetry;
+  everything stays local.
 - **Native and fast** — a single C++/Qt 6 app. No browser runtime, no background
   services, instant startup.
 - **English + Arabic** (full RTL).
-- **Windows 10/11** for now — Linux account switching is a follow-up.
+- **Windows 10/11** for now.
 
 ## ⬇️ Download
 
@@ -49,8 +49,8 @@ telemetry, no analytics. Everything the app knows lives in local files next to i
 and its only network traffic is downloading cover art from the stores' public
 image servers.
 
-> First-time tip: log into each of your Steam accounts once with **"Remember me"**
-> checked so ORBIT can switch between them. See [First-time setup](#first-time-setup).
+> Using several Steam accounts? Log into each once with **"Remember me"** checked
+> so ORBIT can switch between them. See [First-time setup](#first-time-setup).
 
 ---
 
@@ -68,22 +68,31 @@ whatever their own client is signed into.
 
 ## First-time setup
 
-1. Log into **each** Steam account once with **"Remember me"** checked. This is
-   mandatory — see the limitations below.
-2. Run **`Orbit.exe`**. A one-time setup screen shows which stores were detected;
-   installed games are mapped to their owning Steam account **automatically** from
-   local data — no API key needed.
-3. Click any game to play. `Ctrl+K` opens the search palette from anywhere.
+1. Run **`Orbit.exe`**. A one-time setup screen shows which stores were detected —
+   there's nothing to connect or configure.
+2. Click any game to play. `Ctrl+K` opens the search palette from anywhere.
+3. **Using more than one Steam account?** Log into each once with **"Remember
+   me"** checked so ORBIT can switch between them (mandatory — see the limits
+   below). Games are mapped to their owning account **automatically** from local
+   data — no API key needed.
 
-Need another Steam account? **Accounts → Add account** restarts Steam to its
-sign-in screen so you can log in (check **"Remember me"**); the new account then
-appears with a **✓ ready** badge once it can be switched to. **Accounts → Switch
-now** switches Steam to an account without launching anything.
+## Steam extras: account switching & offline mode
 
-A game can occasionally stay **unmapped** (some family-shared installs record no
-local owner) — pin it to an account from its detail page (**Pin to account…**).
+If all your games live on one account per store, ORBIT is simply a launcher and
+you can stop reading here. But if your Steam games are spread across **multiple
+accounts**, this is the feature that removes the daily pain: click a game and
+ORBIT switches Steam to the account that owns it, waits for the login, and
+launches — no logging out and back in by hand, no retyping passwords.
 
-## Two hard limitations (by Steam's design)
+- **Accounts → Add account** restarts Steam to its sign-in screen so you can log
+  in (check **"Remember me"**); the new account then appears with a **✓ ready**
+  badge once it can be switched to.
+- **Accounts → Switch now** switches Steam to an account without launching
+  anything.
+- A game can occasionally stay **unmapped** (some family-shared installs record no
+  local owner) — pin it to an account from its detail page (**Pin to account…**).
+
+### Two hard limits (by Steam's design)
 
 1. **ORBIT never types your password.** Steam blocks scripted password entry (2FA
    by design). Silent switching works because Steam keeps a saved login after you
