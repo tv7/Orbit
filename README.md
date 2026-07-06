@@ -1,3 +1,5 @@
+**English** | [العربية](README.ar.md)
+
 # ORBIT
 
 **Every game installed on your PC — Steam, Epic, GOG and Xbox Game Pass — in one
