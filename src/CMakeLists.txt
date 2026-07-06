@@ -150,9 +150,9 @@ if(Qt6_FOUND)
         FILES ui/i18n/ar.qm
     )
     target_link_libraries(Orbit PRIVATE sscore Qt6::Core Qt6::Gui Qt6::Quick Qt6::Network)
-    # TODO: flip back to ON once the UI is verified — OFF gives a console so QML
-    # load errors are visible while debugging.
-    set_target_properties(Orbit PROPERTIES WIN32_EXECUTABLE OFF)
+    # ON = GUI subsystem, no console window. Flip OFF while debugging QML load
+    # errors (they only print to a console).
+    set_target_properties(Orbit PROPERTIES WIN32_EXECUTABLE ON)
 else()
     message(STATUS "Qt6 not found — building core + ssdiag + tests only (no GUI).")
 endif()
