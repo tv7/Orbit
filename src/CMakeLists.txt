@@ -1,0 +1,158 @@
+cmake_minimum_required(VERSION 3.21)
+project(Orbit LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_EXTENSIONS OFF)
+
+# --- Core engine (no Qt; pure std + OS APIs) ---------------------------------
+set(CORE_SOURCES
+    core/model.cpp
+    core/vdf.cpp
+    core/json.cpp
+    core/http.cpp
+    core/appdata.cpp
+    core/autostart.cpp
+    core/settings.cpp
+    core/steam_paths.cpp
+    core/steam_games.cpp
+    core/steam_accounts.cpp
+    core/steam_switcher.cpp
+    core/steam_launcher.cpp
+    core/covers.cpp
+    core/store_covers.cpp
+    core/epic_games.cpp
+    core/gog_games.cpp
+    core/xbox_games.cpp
+    core/sha256.cpp
+    core/stores/steam_store.cpp
+    core/stores/epic_store.cpp
+    core/stores/gog_store.cpp
+    core/stores/xbox_store.cpp
+)
+if(WIN32)
+    list(APPEND CORE_SOURCES core/platform_win.cpp)
+else()
+    list(APPEND CORE_SOURCES core/platform_posix.cpp)
+endif()
+
+add_library(sscore STATIC ${CORE_SOURCES})
+target_include_directories(sscore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
+if(WIN32)
+    target_link_libraries(sscore PRIVATE shell32 advapi32 user32)
+endif()
+
+# --- Diagnostic CLI (Phase 1 parity gate) ------------------------------------
+add_executable(ssdiag tools/ssdiag.cpp)
+target_link_libraries(ssdiag PRIVATE sscore)
+
+# --- Headless tests ----------------------------------------------------------
+enable_testing()
+file(GLOB TEST_SOURCES tests/test_*.cpp tests/test_runner.cpp)
+add_executable(sstests ${TEST_SOURCES})
+target_link_libraries(sstests PRIVATE sscore)
+add_test(NAME sstests COMMAND sstests)
+
+# --- Qt 6 GUI (optional: only if Qt6 is found) -------------------------------
+find_package(Qt6 COMPONENTS Core Gui Quick Network QUIET)
+if(Qt6_FOUND)
+    qt_standard_project_setup(REQUIRES 6.5)
+    # Headers are listed explicitly: qmltyperegistrar needs them in the target's
+    # sources to emit the right #include for QML_ELEMENT types (GameFilterModel) —
+    # without this the generated orbit_qmltyperegistrations.cpp fails to compile.
+    qt_add_executable(Orbit
+        ui/main.cpp
+        ui/Backend.cpp
+        ui/Backend.h
+        ui/GameModel.cpp
+        ui/GameModel.h
+        ui/GameFilterModel.cpp
+        ui/GameFilterModel.h
+        ui/QtFetcher.cpp
+        ui/QtFetcher.h
+    )
+    # The generated registration file includes the header by basename.
+    target_include_directories(Orbit PRIVATE ui)
+    # Windows: embed orbit.ico into the exe (taskbar / Explorer / Alt-Tab icon).
+    if(WIN32)
+        target_sources(Orbit PRIVATE ui/orbit.rc)
+    endif()
+    # Theme.qml and AppState.qml are QML singletons.
+    set_source_files_properties(ui/qml/Theme.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+    set_source_files_properties(ui/qml/AppState.qml PROPERTIES QT_QML_SINGLETON_TYPE TRUE)
+    qt_add_qml_module(Orbit
+        URI Orbit
+        VERSION 1.0
+        QML_FILES
+            ui/qml/Main.qml
+            ui/qml/Theme.qml
+            ui/qml/AppState.qml
+            ui/qml/AmbientBackground.qml
+            ui/qml/AppScrollBar.qml
+            ui/qml/Toggle.qml
+            ui/qml/Chip.qml
+            ui/qml/GameCard.qml
+            ui/qml/Shelf.qml
+            ui/qml/SearchPalette.qml
+            ui/qml/LibraryView.qml
+            ui/qml/DetailView.qml
+            ui/qml/AccountsView.qml
+            ui/qml/SettingsView.qml
+            ui/qml/OnboardingOverlay.qml
+    )
+    # Bundle the UI fonts into the binary so the typography ships without any system
+    # install. ORBIT uses Space Grotesk (display) + Manrope (body); IBM Plex Sans
+    # Arabic covers Arabic. (Hanken Grotesk / Geist kept as fallbacks from the
+    # earlier build.)
+    # App icon PNGs for QML/QIcon use (window icon, in-UI brand marks). Generated
+    # by tools/make_orbit_icon.py (also packs ui/icons/orbit.ico for the .rc).
+    qt_add_resources(Orbit "appicons"
+        PREFIX "/icons"
+        BASE "ui/icons"
+        FILES
+            ui/icons/orbit-16.png
+            ui/icons/orbit-24.png
+            ui/icons/orbit-32.png
+            ui/icons/orbit-48.png
+            ui/icons/orbit-64.png
+            ui/icons/orbit-128.png
+            ui/icons/orbit-256.png
+    )
+    qt_add_resources(Orbit "appfonts"
+        PREFIX "/fonts"
+        BASE "ui/fonts"
+        FILES
+            ui/fonts/space-grotesk-500.ttf
+            ui/fonts/space-grotesk-600.ttf
+            ui/fonts/space-grotesk-700.ttf
+            ui/fonts/manrope-400.ttf
+            ui/fonts/manrope-500.ttf
+            ui/fonts/manrope-600.ttf
+            ui/fonts/manrope-700.ttf
+            ui/fonts/manrope-800.ttf
+            ui/fonts/hanken-grotesk-400.ttf
+            ui/fonts/hanken-grotesk-500.ttf
+            ui/fonts/hanken-grotesk-600.ttf
+            ui/fonts/hanken-grotesk-700.ttf
+            ui/fonts/geist-500.ttf
+            ui/fonts/geist-600.ttf
+            ui/fonts/plex-arabic-400.ttf
+            ui/fonts/plex-arabic-600.ttf
+            ui/fonts/plex-arabic-700.ttf
+    )
+    # Arabic UI catalog. ar.qm is prebuilt from ar.ts and committed, so building
+    # the app needs no Qt LinguistTools. Regenerate after changing UI strings:
+    #   lupdate ui/qml/*.qml ui/Backend.cpp -ts ui/i18n/ar.ts   (then translate)
+    #   lrelease ui/i18n/ar.ts -qm ui/i18n/ar.qm
+    qt_add_resources(Orbit "translations"
+        PREFIX "/i18n"
+        BASE "ui/i18n"
+        FILES ui/i18n/ar.qm
+    )
+    target_link_libraries(Orbit PRIVATE sscore Qt6::Core Qt6::Gui Qt6::Quick Qt6::Network)
+    # ON = GUI subsystem, no console window. Flip OFF while debugging QML load
+    # errors (they only print to a console).
+    set_target_properties(Orbit PROPERTIES WIN32_EXECUTABLE ON)
+else()
+    message(STATUS "Qt6 not found — building core + ssdiag + tests only (no GUI).")
+endif()

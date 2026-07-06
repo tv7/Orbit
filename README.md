@@ -1,179 +1,196 @@
-# SteamSwitch
+# ORBIT
 
-**Click a game and it instantly switches to the Steam account that owns it, logs in, and launches — no manual account swapping.**
+**Every game installed on your PC — Steam, Epic, GOG and Xbox Game Pass — in one
+native window. Click a game and it launches; if it lives on another Steam account,
+ORBIT switches to that account, logs in, and launches it for you.**
 
-![SteamSwitch in action: clicking a game's cover art switches accounts and launches it](assets/demo.gif)
+![ORBIT in action: one multi-store library; clicking a Steam game switches accounts and launches it](assets/demo.gif)
 
-> Click *Grand Theft Auto V* → SteamSwitch swaps to the account that owns it, logs in, and the game opens. One click, no account picker, no retyping logins.
+> Click *Grand Theft Auto V* → ORBIT swaps Steam to the account that owns it, waits
+> for the login, and the game opens. One click, no manual account swapping, no
+> retyping logins.
 
-Most Steam account switchers are *account-first*: you pick an account, log in, then go find your game. SteamSwitch is *game-first* — it maps every installed game to its owning account automatically (read from Steam's local data, no API key), so you just click what you want to play. Plus a one-click **launch offline** toggle that handles Steam's offline-mode dance for you.
+Most Steam account switchers are *account-first*: pick an account, log in, then go
+find your game. ORBIT is *game-first* — it maps every installed Steam game to its
+owning account automatically (read from Steam's local data, no API key), and puts
+your Epic, GOG and Game Pass installs in the same library. Plus a one-click
+**offline mode** that handles Steam's offline-mode dance for you.
 
-- **No password handling** — it never types or stores your password; it rides Steam's own saved-login tokens ("Remember me"), so it's as safe as Steam's normal login.
-- **Safe by default** — backs up `loginusers.vdf` before the first write; all data stays local.
-- **Windows 10/11** for now — Linux account switching is the next phase.
+- **No password handling** — it never types or stores your password; it rides
+  Steam's own saved logins ("Remember me"), so it's as safe as Steam's normal login.
+- **Nothing fabricated** — the library shows only what's really detected on your
+  disk: real installs, real owners, real playtime.
+- **Safe by default** — backs up `loginusers.vdf` before the first write; all data
+  stays local.
+- **Native and fast** — a single C++/Qt 6 app. No browser runtime, no background
+  services, instant startup.
+- **English + Arabic** (full RTL).
+- **Windows 10/11** for now — Linux account switching is a follow-up.
 
 ## ⬇️ Download
 
 **Grab the latest release → [Releases](https://github.com/tv7/steam-switch/releases/latest)**
 
-Download **`SteamSwitch-portable.zip`**, unzip it anywhere, and run
-**`SteamSwitch.exe`** inside — no Python, no installer, nothing to set up. Keep the
-two files in the folder (`SteamSwitch.exe` + `server.exe`) together. Windows 10/11
-only for now (uses the built-in Edge WebView2 runtime).
+1. Download **`Orbit-portable.zip`**.
+2. Unzip it anywhere (Desktop, `D:\Apps\Orbit`, a USB stick — doesn't matter).
+3. Run **`Orbit.exe`** inside the folder.
+
+That's it — no installer, no admin rights, nothing to configure. Just keep the
+files in the folder together (the Qt runtime ships alongside the exe). Windows
+10/11.
+
+**Your passwords are never touched.** ORBIT has no login of its own and never
+asks for, sees, stores, or transmits your Steam/Epic/GOG/Xbox passwords — account
+switching works through Steam's own "Remember me" logins, the same ones Steam
+already keeps on your PC. Nothing is sent to third parties: there's no server, no
+telemetry, no analytics. Everything the app knows lives in local files next to it,
+and its only network traffic is downloading cover art from the stores' public
+image servers.
 
 > First-time tip: log into each of your Steam accounts once with **"Remember me"**
-> checked so SteamSwitch can switch between them. See [First-time setup](#first-time-setup).
+> checked so ORBIT can switch between them. See [First-time setup](#first-time-setup).
 
 ---
 
-## Architecture
+## The four stores
 
-SteamSwitch is a **Tauri (Rust) shell** hosting an **HTML/CSS UI** (Edge WebView2
-on Windows), talking to a **pure-stdlib Python sidecar** that holds all the Steam
-logic. The Rust shell opens the window (WebView2 initialises asynchronously, so the
-window never freezes), spawns the sidecar, and talks to it over localhost HTTP +
-Server-Sent Events. (It used to be a pywebview app; that froze for ~20s on launch
-because pywebview initialises WebView2 synchronously on the UI thread — the Tauri
-shell fixes that.)
+| Store | How games are found | How they launch |
+|-------|--------------------|-----------------|
+| **Steam** | `appmanifest_*.acf` in every library folder; owner resolved from Steam's local data (LastOwner → userdata → playtime tiebreak) | Switch to the owning account if needed → Steam launches the appid |
+| **Epic Games** | The launcher's install manifests (`%PROGRAMDATA%\Epic\...\Manifests`) | `com.epicgames.launcher://` deep link (silent) |
+| **GOG** | Windows registry (`HKLM\...\GOG.com\Games`) — Galaxy not required | GOG Galaxy if installed, else the DRM-free exe directly |
+| **Xbox / Game Pass** | `<drive>:\XboxGames` (`MicrosoftGame.config`) | `shell:AppsFolder` AUMID (the only way UWP titles can start) |
 
-## Run from source
-
-Needs the **Rust toolchain** + the **Tauri CLI** (one-time — see
-[`src-tauri/README.md`](src-tauri/README.md)); the Python side is stdlib-only.
-
-```
-cargo tauri dev
-```
-
-In dev the shell runs `python server.py` for you, so you only need Python on PATH.
-
-## Build the app
-
-```
-python build.py        # run on Windows
-```
-
-One command: it builds the Python sidecar (PyInstaller), generates the app icons if
-needed, runs `cargo tauri build`, and places the sidecar next to the built
-executable. Neither PyInstaller nor Tauri can cross-compile, so build on the target
-OS. See [`src-tauri/README.md`](src-tauri/README.md) for prerequisites.
-
-## Status
-
-- [x] Cross-platform core: Steam discovery, game enumeration, VDF parsing
-- [x] Windows account switching (registry `AutoLoginUser` + `loginusers.vdf`)
-- [x] Tauri (Rust) shell + HTML/CSS GUI (cover-art grid, accounts view, offline toggle)
-- [x] Offline mode via Steam's `WantsOfflineMode` flag (no clicking, no calibration)
-- [ ] Linux account switching (next phase)
-
-## How it works
-
-| Step | Where |
-|------|-------|
-| Find Steam + library folders | `core/steam_paths.py` |
-| List installed games (`appmanifest_*.acf`) | `core/games.py` |
-| List accounts (`loginusers.vdf`) + map games→accounts from local Steam data | `core/accounts.py` |
-| Resolve cover art (local cache → CDN → Steam store API) | `core/covers.py` |
-| Switch account (registry + loginusers) and control the Steam process | `core/switcher.py` |
-| Orchestrate switch → launch | `core/launcher.py` |
-| HTML/CSS UI | `web/` |
-| Python sidecar: HTTP + SSE bridge over `core/*` | `server.py` |
-| JS bridge shim (`window.pywebview.api.*` → HTTP/SSE) | `web/bridge.js` |
-| Tauri (Rust) shell: window + spawns the sidecar | `src-tauri/` |
-| Build (sidecar + Tauri app) | `build.py`, `build_sidecar.py` |
+Only Steam involves account switching — Epic/GOG/Xbox titles just launch under
+whatever their own client is signed into.
 
 ## First-time setup
 
 1. Log into **each** Steam account once with **"Remember me"** checked. This is
-   mandatory — see the limitation below.
-2. Run **`SteamSwitch.exe`** (or `cargo tauri dev` from source). Installed games are
-   mapped to their owning account **automatically** from Steam's local data — no
-   API key needed.
-3. Click any game to play.
+   mandatory — see the limitations below.
+2. Run **`Orbit.exe`**. A one-time setup screen shows which stores were detected;
+   installed games are mapped to their owning Steam account **automatically** from
+   local data — no API key needed.
+3. Click any game to play. `Ctrl+K` opens the search palette from anywhere.
 
-Need another account? Open **Accounts → “+ Add an account.”** It restarts Steam to
-the login screen so you can sign in (with **“Remember me”** checked); the new
-account then appears in the list, marked **✓ ready** once it can be switched to.
+Need another Steam account? **Accounts → Add account** restarts Steam to its
+sign-in screen so you can log in (check **"Remember me"**); the new account then
+appears with a **✓ ready** badge once it can be switched to. **Accounts → Switch
+now** switches Steam to an account without launching anything.
 
-Almost all installed games map automatically. A game can occasionally stay
-**unmapped** — some family-shared installs record no local owner — and there is
-currently **no in-app way to map one manually**, so those few can't be launched
-through SteamSwitch yet.
+A game can occasionally stay **unmapped** (some family-shared installs record no
+local owner) — pin it to an account from its detail page (**Pin to account…**).
 
 ## Two hard limitations (by Steam's design)
 
-1. **We never type your password.** Steam blocks scripted password entry (2FA).
-   Silent auto-login only works because Steam keeps a saved login token after you
-   log in once with "Remember me". Tokens expire occasionally; when that happens
-   the launcher **detects it** (it reads `ActiveProcess\ActiveUser`, which Steam
-   sets to your account on successful login and leaves at `0` on the login screen)
-   and pops up "Finish login in Steam" instead of silently failing. Enter your
-   password + Steam Guard once in the Steam window, then click the game again. A
-   pre-flight check also warns up front if an account was never logged in with
-   "Remember me", before it touches your running Steam session.
+1. **ORBIT never types your password.** Steam blocks scripted password entry (2FA
+   by design). Silent switching works because Steam keeps a saved login after you
+   log in once with "Remember me". When that saved login expires, ORBIT **detects
+   it** and tells you to log in manually that one time — it doesn't pretend to
+   automate it. A pre-flight check also warns up front if an account was never
+   logged in with "Remember me", before touching your running Steam.
 
-2. **Offline mode uses Steam's `WantsOfflineMode` flag.** Steam has no working CLI
-   flag for offline (it ignores `-offline`), and cold-starting offline with no live
-   session just hangs. So the app does what works: it logs the account in **online**
-   first (which mints the session offline needs), sets `WantsOfflineMode=1` while
-   Steam is running, then restarts Steam so it comes up **offline**, and only then
-   launches the game. No clicking, no calibration — resolution-independent. If Steam
-   can't come up offline (usually a corrupt Steam cache — clear the download cache /
-   delete `Steam\appcache`), the app cleans up and doesn't launch. Windows-only for
-   now.
+2. **Offline mode uses Steam's `WantsOfflineMode` flag.** Steam has no working
+   offline CLI flag, and cold-starting offline with no live session just hangs. So
+   ORBIT does what actually works: it logs the account in **online** first (which
+   mints the session offline needs), sets `WantsOfflineMode=1` while Steam is
+   running, then restarts Steam so it comes up **offline** — and only then launches
+   the game. If Steam comes back online instead, it does **not** launch, so a
+   shared account is never used online by mistake. Use case: play a shared account
+   without syncing over the other player's cloud saves.
+
+## Architecture
+
+ORBIT is a **single native C++17 application**: a dependency-free core (`src/core/`
+— pure C++, no Qt: VDF/JSON parsers, the OS platform layer, and one enumerator +
+launcher per store behind an `IStore` interface) under a **Qt 6 / QML** UI
+(`src/ui/`). The core is fully unit-tested headless against a synthetic Steam tree
+— no real Steam needed — and `ssdiag` gives a CLI view of everything the app sees.
+
+<details>
+<summary>History: the previous SteamSwitch app (Python + Tauri)</summary>
+
+ORBIT started life as **SteamSwitch**, a Tauri (Rust) shell + Python sidecar +
+HTML/CSS UI, Steam-only. The C++ core is a behaviour-faithful port of that app's
+Python `core/` (validated byte-identical on real hardware), with Epic/GOG/Xbox
+added on top. The legacy stack (`core/`, `server.py`, `src-tauri/`, `web/`) is
+still in the tree as the reference implementation and will be removed.
+
+</details>
+
+## Build from source
+
+One-time toolchain: **CMake ≥ 3.21**, **MSVC** (C++17), **Qt 6.5+**
+(Core/Gui/Quick/Network).
+
+```
+cmake -S src -B build -DCMAKE_PREFIX_PATH=C:/Qt/6.7.2/msvc2022_64
+cmake --build build --config Release
+```
+
+Package the portable folder (bundles the Qt runtime next to the exe):
+
+```
+C:\Qt\6.7.2\msvc2022_64\bin\windeployqt --qmldir src\ui\qml --release build\Release\Orbit.exe
+```
+
+Zip the resulting folder → that's the release artifact. Without Qt installed,
+CMake still builds the headless targets (`sscore`, `ssdiag`, `sstests`) on any OS —
+see [`src/README.md`](src/README.md) for details and the parity checks.
+
+## Diagnostics
+
+```
+build/ssdiag accounts    # Steam accounts + game→account mapping, with reasons
+build/ssdiag epic|gog|xbox   # what each store enumerator sees
+build/ssdiag games       # installed Steam games
+ctest --test-dir build   # headless test suite
+```
 
 ## Troubleshooting
 
 ### Offline launch: Steam hangs on the "Connecting…" screen
 
-By far the most common offline problem. When you launch a game **offline**, the app
-restarts Steam so it comes up in offline mode — and on some PCs Steam then gets
-**stuck on the connecting/loading splash** and never reaches its window. This is a
-known, machine-specific Steam issue (almost always a **corrupt Steam cache**), not a
-bug in the app — the same steps work fine on a clean PC. The app detects the hang,
-cleans up (it clears the offline flag and closes the stuck Steam so your next start
-is normal), and does **not** launch the game.
+The most common offline problem, and machine-specific (almost always a **corrupt
+Steam cache**, not an ORBIT bug). ORBIT detects the hang, cleans up (clears the
+offline flag and closes the stuck Steam so your next start is normal), and does
+**not** launch the game. To fix:
 
-To fix it, clear Steam's caches:
+1. **Clear the download cache:** Steam → Settings → Downloads → **Clear Download
+   Cache**. This alone resolves most cases.
+2. **Delete `Steam\appcache`** (if step 1 didn't help): exit Steam fully, delete
+   the `appcache` folder in the Steam install dir (it's just a cache — games,
+   logins and saves are untouched), start Steam once online, then retry.
 
-1. **Clear the download cache (try this first):**
-   open Steam → **Settings → Downloads → Clear Download Cache** → confirm. Steam
-   restarts and you log back in. This alone resolves most cases.
-2. **Delete the `appcache` folder (if step 1 didn't help):**
-   - Fully exit Steam (right-click the tray icon → **Exit**, and confirm no
-     `steam.exe` is left in Task Manager).
-   - Open your Steam install folder (default `C:\Program Files (x86)\Steam`).
-   - Delete (or rename) the **`appcache`** folder. Steam rebuilds it on next start.
-   - Start Steam normally once (online) to let it rebuild, then try the offline
-     launch again.
-
-Deleting `appcache` is safe — it's only Steam's cache; your games, logins, and saves
-are untouched.
-
-### Other offline notes
-
-- Offline mode needs the account to have logged in **online at least once recently**
-  (the app does this for you), so Steam has a valid cached session to go offline with.
-- Steam's offline mode has a built-in time limit (you must reconnect every couple of
-  weeks); that's Steam's behavior, not the app's.
+Also note Steam's own rule: offline needs a recent online login (ORBIT does this
+for you), and Steam caps how long you can stay offline before it wants to
+reconnect.
 
 ### "Finish login in Steam" / a game won't switch accounts
 
-The saved login token for that account expired. Log into the account once in the
-Steam window with **"Remember me"** checked (enter your password + Steam Guard that
-one time), then click the game again.
+The saved login for that account expired. Log into it once in the Steam window
+with **"Remember me"** checked (password + Steam Guard that one time), then click
+the game again.
 
-## Safety
+### An Epic / GOG / Game Pass game won't launch
 
-- Before the first write, `loginusers.vdf` is backed up to `loginusers.vdf.bak`.
-- All account/key data stays local in `data/mapping.json`.
+Those launch through their own store's plumbing — make sure the store's client
+(Epic Games Launcher / GOG Galaxy / Xbox app) is installed and signed in, and for
+Game Pass that the title's license is still active.
 
-## Dev
+## Privacy & safety
 
-Run modules directly to inspect what the core sees:
-
-```
-python -m core.steam_paths     # Steam root, exe, libraries
-python -m core.games           # installed games
-python tests/smoke_test.py     # parser tests against a synthetic Steam dir
-```
+- **No passwords, ever.** ORBIT never asks for, reads, stores, or types a
+  password. Switching rides Steam's own saved "Remember me" logins; when one
+  expires, ORBIT tells you to log in manually in Steam — it doesn't try to
+  automate it.
+- **No third parties.** No server, no account system, no telemetry, no
+  analytics, no API keys. The only network requests are cover-art downloads
+  from the stores' public image CDNs.
+- **Everything is local.** Settings, the cover cache, and the game→account
+  mapping are plain local files (`settings.json`, `data/`) you can inspect or
+  delete at any time.
+- **Careful with Steam's files.** Before the first write, `loginusers.vdf` is
+  backed up to `loginusers.vdf.bak`; registry changes are limited to the same
+  per-user values Steam itself uses for account selection.
+- **Open source.** All of the above is verifiable — this repo is the entire app.

@@ -1,0 +1,3 @@
+// ORBIT exe icon (Explorer / taskbar). Regenerate icons/orbit.ico via
+// tools/make_orbit_icon.py.
+IDI_ICON1 ICON "icons/orbit.ico"
