@@ -15,7 +15,11 @@ ApplicationWindow {
     visible: true
     title: "ORBIT"
     color: "transparent"
-    flags: Qt.Window | Qt.FramelessWindowHint
+    // The min/max/system hints matter even though we draw our own buttons:
+    // without them the frameless window lacks WS_MINIMIZEBOX/WS_MAXIMIZEBOX on
+    // Windows, so clicking the taskbar icon can't minimize it and snap misbehaves.
+    flags: Qt.Window | Qt.FramelessWindowHint | Qt.WindowMinimizeButtonHint
+         | Qt.WindowMaximizeButtonHint | Qt.WindowSystemMenuHint
 
     // language drives layout mirroring (ar = RTL)
     LayoutMirroring.enabled: backend.rtl
@@ -128,11 +132,13 @@ ApplicationWindow {
 
                 // search pill -> palette
                 Rectangle {
+                    id: searchPill
                     Layout.fillWidth: true
                     Layout.maximumWidth: 340
                     Layout.leftMargin: 6
                     Layout.preferredHeight: 38
                     radius: 19
+                    clip: true      // it may be squeezed hard on narrow windows
                     color: searchHover.containsMouse ? Qt.rgba(1, 1, 1, 0.09) : Theme.fill
                     border.width: 1; border.color: Theme.line
                     RowLayout {
@@ -148,6 +154,7 @@ ApplicationWindow {
                             elide: Text.ElideRight
                         }
                         Rectangle {
+                            visible: searchPill.width > 180
                             implicitWidth: kbd.implicitWidth + 12; implicitHeight: 20
                             radius: 5; color: "transparent"
                             border.width: 1; border.color: Theme.line
@@ -184,6 +191,10 @@ ApplicationWindow {
                                 : qsTr("Steam signed out")
                             color: Theme.muted
                             font.family: Theme.fontBody; font.pixelSize: 12; font.weight: Font.DemiBold
+                            // Shrink+elide on narrow windows so the pill can never push
+                            // the window controls off the right edge.
+                            elide: Text.ElideRight
+                            width: Math.min(implicitWidth, Math.max(90, win.width - 1040))
                         }
                     }
                 }
@@ -270,21 +281,30 @@ ApplicationWindow {
             }
         }
 
-        // ---- resize edges (frameless) ----
+        // ---- resize edges + corners (frameless) ----
         Repeater {
             model: [
-                { e: Qt.TopEdge,    x: 0,  y: -1, w: 1, h: 0, cur: Qt.SizeVerCursor,  horiz: true,  vert: false },
-                { e: Qt.BottomEdge, x: 0,  y: 0,  w: 1, h: 0, cur: Qt.SizeVerCursor,  horiz: true,  vert: false },
-                { e: Qt.LeftEdge,   x: -1, y: 0,  w: 0, h: 1, cur: Qt.SizeHorCursor,  horiz: false, vert: true },
-                { e: Qt.RightEdge,  x: 0,  y: 0,  w: 0, h: 1, cur: Qt.SizeHorCursor,  horiz: false, vert: true }
+                { e: Qt.TopEdge,                   cur: Qt.SizeVerCursor },
+                { e: Qt.BottomEdge,                cur: Qt.SizeVerCursor },
+                { e: Qt.LeftEdge,                  cur: Qt.SizeHorCursor },
+                { e: Qt.RightEdge,                 cur: Qt.SizeHorCursor },
+                { e: Qt.TopEdge | Qt.LeftEdge,     cur: Qt.SizeFDiagCursor },
+                { e: Qt.TopEdge | Qt.RightEdge,    cur: Qt.SizeBDiagCursor },
+                { e: Qt.BottomEdge | Qt.LeftEdge,  cur: Qt.SizeBDiagCursor },
+                { e: Qt.BottomEdge | Qt.RightEdge, cur: Qt.SizeFDiagCursor }
             ]
             delegate: MouseArea {
                 property var d: modelData
-                width: d.horiz ? parent.width : 6
-                height: d.vert ? parent.height : 6
-                x: d.e === Qt.RightEdge ? parent.width - 6 : 0
-                y: d.e === Qt.BottomEdge ? parent.height - 6 : 0
-                z: 80
+                readonly property bool onLeft:   (d.e & Qt.LeftEdge) !== 0
+                readonly property bool onRight:  (d.e & Qt.RightEdge) !== 0
+                readonly property bool onTop:    (d.e & Qt.TopEdge) !== 0
+                readonly property bool onBottom: (d.e & Qt.BottomEdge) !== 0
+                readonly property bool corner: (onLeft || onRight) && (onTop || onBottom)
+                width: corner ? 14 : (onLeft || onRight) ? 6 : parent.width
+                height: corner ? 14 : (onTop || onBottom) ? 6 : parent.height
+                x: onRight ? parent.width - width : 0
+                y: onBottom ? parent.height - height : 0
+                z: corner ? 81 : 80     // corners sit above the edge strips
                 cursorShape: d.cur
                 onPressed: win.startSystemResize(d.e)
             }
