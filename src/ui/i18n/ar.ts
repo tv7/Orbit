@@ -258,6 +258,16 @@
 <context>
     <name>LibraryView</name>
     <message>
+        <location filename="../qml/LibraryView.qml" line="235" />
+        <source>Scanning…</source>
+        <translation>جارٍ الفحص…</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryView.qml" line="235" />
+        <source>Refresh</source>
+        <translation>تحديث</translation>
+    </message>
+    <message>
         <location filename="../qml/LibraryView.qml" line="114" />
         <source>READY TO PLAY</source>
         <translation>جاهزة للعب</translation>
@@ -318,9 +328,19 @@
         <translation>هذه اللعبة غير مرتبطة بأي حساب بعد — افتح «التفاصيل» لتثبيتها على حساب.</translation>
     </message>
     <message>
-        <location filename="../qml/LibraryView.qml" line="217" />
-        <source>Continue playing</source>
-        <translation>واصل اللعب</translation>
+        <location filename="../qml/LibraryView.qml" line="230" />
+        <source>All stores</source>
+        <translation>كل المتاجر</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryView.qml" line="233" />
+        <source>Recent</source>
+        <translation>الأحدث</translation>
+    </message>
+    <message>
+        <location filename="../qml/LibraryView.qml" line="300" />
+        <source>Nothing played yet</source>
+        <translation>لم تلعب أي لعبة بعد</translation>
     </message>
     <message>
         <location filename="../qml/LibraryView.qml" line="244" />

@@ -1,7 +1,8 @@
 // CINEMA library: a full-bleed hero of the last-played (or random) game with
-// instant Play, then horizontal shelves — Continue playing + one per store.
-// Everything shown is real: hero art via requestHero, chips only where data
-// exists, shelves are live filters over the scanned model.
+// instant Play, then ONE vertically-wrapping card grid filtered by a chip row
+// (All stores / Recent / per-store). Everything shown is real: hero art via
+// requestHero, chips only for stores with games, the grid is a live filter
+// over the scanned model. No horizontal scrolling.
 import QtQuick
 import QtQuick.Controls
 import QtQuick.Layouts
@@ -16,6 +17,18 @@ Item {
     // been played yet; null when the library is empty.
     GameFilter { id: recentGames; sourceModel: backend.allGames; sortMode: "recent"; playedOnly: true }
     GameFilter { id: anyGames; sourceModel: backend.allGames; sortMode: "az" }
+
+    // ---- grid filter ------------------------------------------------------------
+    // "all" | "recent" | a store name ("Steam"/"Epic"/"GOG"/"Xbox").
+    property string filterSel: "all"
+    GameFilter {
+        id: gridGames
+        sourceModel: backend.allGames
+        // "all" is the model's match-everything sentinel (not the empty string).
+        storeFilter: root.filterSel === "all" || root.filterSel === "recent" ? "all" : root.filterSel
+        sortMode: root.filterSel === "recent" ? "recent" : "az"
+        playedOnly: root.filterSel === "recent"
+    }
 
     property var heroGame: null
     property string heroUrl: ""
@@ -205,32 +218,91 @@ Item {
             // spacing under the top bar when there's no hero (empty library)
             Item { Layout.preferredHeight: 90; visible: root.heroGame === null }
 
-            // ================= shelves =================
+            // ================= filtered grid =================
+            // One wrap grid over every store; the chip row filters it.
+            // "all" = A→Z across stores, "recent" = played games by last-played,
+            // a store name = that store only. Chips for empty stores are hidden.
             ColumnLayout {
                 Layout.fillWidth: true
                 Layout.leftMargin: 44; Layout.rightMargin: 44
                 Layout.topMargin: 6
-                spacing: 22
+                spacing: 18
 
-                Shelf {
+                // ---- chips + refresh ----
+                RowLayout {
                     Layout.fillWidth: true
-                    title: qsTr("Continue playing")
-                    model: recentGames
-                }
+                    spacing: 8
 
-                Repeater {
-                    model: backend.stores
-                    delegate: Shelf {
-                        Layout.fillWidth: true
-                        title: modelData.name
-                        dotColor: Theme.store(modelData.storeName).color
-                        model: storeFilter
-                        property var storeFilter: GameFilter {
-                            sourceModel: backend.allGames
-                            storeFilter: modelData.storeName
-                            sortMode: "az"
+                    FilterChip { label: qsTr("All stores")
+                        selected: root.filterSel === "all"
+                        onClicked: root.filterSel = "all" }
+                    FilterChip { label: qsTr("Recent")
+                        visible: recentGames.count > 0
+                        selected: root.filterSel === "recent"
+                        onClicked: root.filterSel = "recent" }
+                    Repeater {
+                        model: backend.stores
+                        delegate: FilterChip {
+                            visible: modelData.count > 0
+                            label: modelData.name
+                            dotColor: Theme.store(modelData.storeName).color
+                            selected: root.filterSel === modelData.storeName
+                            onClicked: root.filterSel = modelData.storeName
                         }
                     }
+
+                    Item { Layout.fillWidth: true }
+
+                    // refresh pill (rescans all stores; mirrors the Accounts pill)
+                    Rectangle {
+                        implicitWidth: refreshRow.implicitWidth + 30; implicitHeight: 32
+                        radius: 16
+                        color: refreshHover.containsMouse ? Theme.fill : "transparent"
+                        border.width: 1; border.color: Theme.line
+                        opacity: backend.scanning ? 0.6 : 1
+                        Row {
+                            id: refreshRow
+                            anchors.centerIn: parent
+                            spacing: 8
+                            Label { text: "⟳"; color: Theme.muted; font.pixelSize: 14
+                                anchors.verticalCenter: parent.verticalCenter
+                                RotationAnimation on rotation {
+                                    running: backend.scanning; loops: Animation.Infinite
+                                    from: 0; to: 360; duration: 900 } }
+                            Label {
+                                text: backend.scanning ? qsTr("Scanning…") : qsTr("Refresh")
+                                color: Theme.muted
+                                font.family: Theme.fontBody; font.pixelSize: 12; font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                            }
+                        }
+                        MouseArea { id: refreshHover; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            enabled: !backend.scanning
+                            onClicked: backend.refresh() }
+                    }
+                }
+
+                // ---- grid ----
+                Flow {
+                    id: grid
+                    Layout.fillWidth: true
+                    spacing: 14
+                    // Fill the row exactly: as many ≥132px columns as fit.
+                    readonly property int cols: Math.max(2, Math.floor((width + spacing) / (132 + spacing)))
+                    readonly property real cardW: (width - (cols - 1) * spacing) / cols
+                    Repeater {
+                        model: gridGames
+                        delegate: GameCard { width: grid.cardW }
+                    }
+                }
+
+                Label {
+                    Layout.topMargin: 8
+                    visible: gridGames.count === 0 && anyGames.count > 0 && !backend.scanning
+                    text: qsTr("Nothing played yet")
+                    color: Theme.faint
+                    font.family: Theme.fontBody; font.pixelSize: 13; font.weight: Font.DemiBold
                 }
             }
 

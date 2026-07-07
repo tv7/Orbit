@@ -91,6 +91,7 @@ if(Qt6_FOUND)
             ui/qml/AppScrollBar.qml
             ui/qml/Toggle.qml
             ui/qml/Chip.qml
+            ui/qml/FilterChip.qml
             ui/qml/GameCard.qml
             ui/qml/Shelf.qml
             ui/qml/SearchPalette.qml
