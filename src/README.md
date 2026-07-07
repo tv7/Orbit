@@ -36,6 +36,19 @@ cmake --build build --config Release
 If Qt 6 isn't found, CMake still builds **`sscore` + `ssdiag` + `sstests`** (no GUI)
 — useful for CI / headless verification.
 
+### Release zip
+
+After building + `windeployqt --release --qmldir src\ui\qml build\Release\Orbit.exe`:
+
+```
+powershell -ExecutionPolicy Bypass -File src\tools\make-release-zip.ps1
+```
+
+Produces `dist\Orbit-portable.zip` with only what a release needs — it strips
+`data\` (settings, launch history, cover cache), `startup.log` and the
+ssdiag/sstests dev binaries, so personal data can't end up in a published zip.
+Never zip `build\Release` by hand.
+
 ### Headless core only (Linux/macOS, no Qt)
 
 ```
