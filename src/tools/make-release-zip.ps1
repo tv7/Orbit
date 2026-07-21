@@ -12,6 +12,12 @@ $ErrorActionPreference = "Stop"
 $root    = Split-Path (Split-Path $PSScriptRoot -Parent) -Parent   # repo root
 $release = Join-Path $root "build\Release"
 
+# The folder name INSIDE the zip. It must stay the SAME across releases: ORBIT keeps
+# your settings + custom games + cover cache in data\ next to the exe, so users
+# update by extracting over their existing folder — a changed name would orphan that
+# data. If your older release used a different name, set it here to match.
+$folderName = "Orbit"
+
 if (!(Test-Path (Join-Path $release "Orbit.exe"))) {
     throw "build\Release\Orbit.exe not found - build first: cmake --build build --config Release"
 }
@@ -19,9 +25,9 @@ if (!(Test-Path (Join-Path $release "Qt6Core.dll"))) {
     throw "Qt DLLs missing - run: windeployqt --release --qmldir src\ui\qml build\Release\Orbit.exe"
 }
 
-# Stage a clean copy named Orbit\ (the folder name inside the zip).
+# Stage a clean copy named $folderName\ (the folder name inside the zip).
 $stageRoot = Join-Path $env:TEMP "OrbitReleaseStage"
-$stage     = Join-Path $stageRoot "Orbit"
+$stage     = Join-Path $stageRoot $folderName
 Remove-Item -Recurse -Force $stageRoot -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $stage | Out-Null
 Copy-Item "$release\*" $stage -Recurse
