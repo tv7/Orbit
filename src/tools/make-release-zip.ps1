@@ -16,7 +16,7 @@ $release = Join-Path $root "build\Release"
 # your settings + custom games + cover cache in data\ next to the exe, so users
 # update by extracting over their existing folder — a changed name would orphan that
 # data. If your older release used a different name, set it here to match.
-$folderName = "Orbit"
+$folderName = "Orbit-portable"
 
 if (!(Test-Path (Join-Path $release "Orbit.exe"))) {
     throw "build\Release\Orbit.exe not found - build first: cmake --build build --config Release"
