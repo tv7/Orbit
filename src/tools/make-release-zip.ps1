@@ -26,6 +26,11 @@ Remove-Item -Recurse -Force $stageRoot -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Path $stage | Out-Null
 Copy-Item "$release\*" $stage -Recurse
 
+# Ship the license inside the portable folder (MIT requires the notice travels with
+# the software).
+$license = Join-Path $root "LICENSE"
+if (Test-Path $license) { Copy-Item $license $stage }
+
 # Personal data + dev-only files that must never ship.
 foreach ($junk in "data", "startup.log", "ssdiag.exe", "sstests.exe") {
     Remove-Item -Recurse -Force (Join-Path $stage $junk) -ErrorAction SilentlyContinue
@@ -43,4 +48,10 @@ Remove-Item $zip -ErrorAction SilentlyContinue
 Compress-Archive -Path $stage -DestinationPath $zip
 
 Remove-Item -Recurse -Force $stageRoot
+
+# Emit a SHA-256 so users can verify the download (we're not code-signed yet).
+# Publish this value on the GitHub release page next to the zip.
+$hash = (Get-FileHash $zip -Algorithm SHA256).Hash
+"$hash  Orbit-portable.zip" | Out-File -Encoding ascii (Join-Path $dist "Orbit-portable.zip.sha256")
 Write-Host "OK -> $zip"
+Write-Host "SHA256: $hash"

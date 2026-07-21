@@ -198,7 +198,9 @@ Game Pass that the title's license is still active.
   automate it.
 - **No third parties.** No server, no account system, no telemetry, no
   analytics, no API keys. The only network requests are cover-art downloads
-  from the stores' public image CDNs.
+  from the stores' public image CDNs and a once-per-launch update check against
+  GitHub's public releases API (it never downloads or installs anything on its
+  own — you click Download).
 - **Everything is local.** Settings, the cover cache, and the game→account
   mapping are plain local files (`settings.json`, `data/`) you can inspect or
   delete at any time.
@@ -206,3 +208,11 @@ Game Pass that the title's license is still active.
   backed up to `loginusers.vdf.bak`; registry changes are limited to the same
   per-user values Steam itself uses for account selection.
 - **Open source.** All of the above is verifiable — this repo is the entire app.
+  See [`SECURITY.md`](SECURITY.md) for exactly what ORBIT reads, writes, and sends,
+  and how to verify your download.
+
+## License
+
+ORBIT is released under the [MIT License](LICENSE) — free to use, modify, and
+redistribute, including in commercial and closed-source work, as long as the
+copyright notice is kept.
