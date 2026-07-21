@@ -35,7 +35,7 @@ class GameModel : public QAbstractListModel {
 public:
     enum Roles {
         AppidRole = Qt::UserRole + 1,
-        StoreRole, NameRole, FullyInstalledRole,
+        StoreRole, LaunchIdRole, NameRole, FullyInstalledRole,
         AccountIdRole, AccountNameRole, AccountColorRole, MappedRole,
         PlaytimeRole, LastPlayedRole,
     };

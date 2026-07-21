@@ -93,6 +93,19 @@ void setOfflineDefault(bool value) {
     save(s);
 }
 
+std::string skipUpdate() {
+    json::Value s = load();
+    if (const json::Value* v = s.get("skip_update"))
+        if (v->isString()) return v->str;
+    return "";
+}
+
+void setSkipUpdate(const std::string& version) {
+    json::Value s = load();
+    s.set("skip_update", json::Value::makeString(version));
+    save(s);
+}
+
 std::map<std::string, long long> launchHistory() {
     std::map<std::string, long long> out;
     json::Value s = load();

@@ -30,6 +30,11 @@ void setHeroMode(const std::string& mode);
 bool offlineDefault();
 void setOfflineDefault(bool value);
 
+// A release version the user chose to skip — the startup update banner stays
+// hidden for exactly this version ("" = none; a manual check still surfaces it).
+std::string skipUpdate();
+void setSkipUpdate(const std::string& version);
+
 // ---- ORBIT launch history ----------------------------------------------------
 // Steam knows real playtime/lastPlayed (localconfig.vdf); the other stores don't
 // expose one, so ORBIT records its own successful launches — a truthful

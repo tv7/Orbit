@@ -54,6 +54,11 @@ void spawnDetached(const std::vector<std::string>& argv, const std::string& work
 // for steam://rungameid/<id> and the Epic/Xbox launch protocols.
 void openUri(const std::string& uri);
 
+// The executable's own embedded icon as image bytes (a 32-bpp BMP with alpha),
+// or nullopt if it has none / on POSIX. The universal cover fallback for a
+// custom (arbitrary-exe) game — every game exe carries an icon. Windows only.
+std::optional<std::string> exeIcon(const std::string& exePath);
+
 // True once Steam's main window is present (EnumWindows: class SDL_app / title
 // "Steam"). Windows only; false elsewhere. Our 'Steam really up' offline signal.
 bool steamWindowPresent();

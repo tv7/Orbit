@@ -8,6 +8,7 @@ const char* storeName(Store s) {
         case Store::Epic: return "Epic";
         case Store::Gog: return "GOG";
         case Store::Xbox: return "Xbox";
+        case Store::Custom: return "Custom";
     }
     return "Unknown";
 }

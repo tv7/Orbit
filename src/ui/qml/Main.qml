@@ -30,11 +30,22 @@ ApplicationWindow {
         AppState.offline = backend.offlineDefault;
         // Show the first-run onboarding until it's been completed once.
         if (!backend.onboarded) AppState.onboarding = "welcome";
+        // Quiet check for a newer GitHub release (honours a skipped version).
+        backend.checkForUpdates(false);
     }
 
     Shortcut { sequence: "Ctrl+K"; onActivated: AppState.paletteOpen = !AppState.paletteOpen }
     Shortcut { sequence: "Escape"; enabled: AppState.paletteOpen
         onActivated: AppState.paletteOpen = false }
+
+    // update banner: shown when a newer release is found, until dismissed/skipped
+    property bool updateBannerDismissed: false
+    readonly property bool updateBannerVisible: backend.updateAvailable && !updateBannerDismissed
+    Connections {
+        target: backend
+        // A freshly-found update re-arms the banner (clears a stale session dismiss).
+        function onUpdateChanged() { if (backend.updateAvailable) win.updateBannerDismissed = false }
+    }
 
     // transient status toast state
     property string toastText: ""
@@ -252,14 +263,79 @@ ApplicationWindow {
         // ---- Ctrl-K palette ----
         SearchPalette {}
 
+        // ---- add / edit custom game dialog ----
+        AddGameDialog {}
+
         // ---- first-run onboarding overlay (on top of everything) ----
         OnboardingOverlay {}
+
+        // ---- update banner (persistent until dismissed / skipped) ----
+        Rectangle {
+            visible: win.updateBannerVisible
+            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.bottom: parent.bottom; anchors.bottomMargin: 20
+            z: 72
+            radius: 14
+            width: Math.min(updateRow.implicitWidth + 36, parent.width - 48)
+            height: 56
+            color: Qt.rgba(0.055, 0.070, 0.094, 0.98)
+            border.width: 1; border.color: Theme.accent
+            RowLayout {
+                id: updateRow
+                anchors.fill: parent
+                anchors.leftMargin: 18; anchors.rightMargin: 12
+                spacing: 14
+                Rectangle { Layout.preferredWidth: 9; Layout.preferredHeight: 9; radius: 5
+                    color: Theme.accent }
+                ColumnLayout {
+                    spacing: 1
+                    Label { text: qsTr("ORBIT %1 is available").arg(backend.latestVersion)
+                        color: Theme.text
+                        font.family: Theme.fontBody; font.pixelSize: 13; font.weight: Font.ExtraBold }
+                    Label { text: qsTr("You're on %1").arg(backend.appVersion)
+                        color: Theme.faint
+                        font.family: Theme.fontBody; font.pixelSize: 11; font.weight: Font.DemiBold }
+                }
+                Item { Layout.preferredWidth: 6 }
+                // Download (primary)
+                Rectangle {
+                    implicitWidth: dlLabel.implicitWidth + 28; implicitHeight: 34; radius: 17
+                    color: dlHover.containsMouse ? "#e8ecf5" : "#ffffff"
+                    Label { id: dlLabel; anchors.centerIn: parent; text: qsTr("Download")
+                        color: "#0b0d12"
+                        font.family: Theme.fontBody; font.pixelSize: 12; font.weight: Font.ExtraBold }
+                    MouseArea { id: dlHover; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor; onClicked: backend.openDownloadPage() }
+                }
+                // Skip this version
+                Rectangle {
+                    implicitWidth: skLabel.implicitWidth + 22; implicitHeight: 34; radius: 17
+                    color: skHover.containsMouse ? Theme.fillHover : "transparent"
+                    border.width: 1; border.color: Theme.line
+                    Label { id: skLabel; anchors.centerIn: parent; text: qsTr("Skip")
+                        color: Theme.muted
+                        font.family: Theme.fontBody; font.pixelSize: 12; font.weight: Font.Bold }
+                    MouseArea { id: skHover; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor; onClicked: backend.skipThisUpdate() }
+                }
+                // close (dismiss for this session)
+                Rectangle {
+                    implicitWidth: 30; implicitHeight: 30; radius: 8
+                    color: xHover.containsMouse ? Qt.rgba(1, 1, 1, 0.08) : "transparent"
+                    Label { anchors.centerIn: parent; text: "✕"; color: Theme.faint; font.pixelSize: 12 }
+                    MouseArea { id: xHover; anchors.fill: parent; hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: win.updateBannerDismissed = true }
+                }
+            }
+        }
 
         // ---- status toast ----
         Rectangle {
             visible: win.toastText.length > 0
             anchors.horizontalCenter: parent.horizontalCenter
-            anchors.bottom: parent.bottom; anchors.bottomMargin: 20
+            anchors.bottom: parent.bottom
+            anchors.bottomMargin: win.updateBannerVisible ? 88 : 20
             radius: 12
             width: Math.min(toastRow.implicitWidth + 32, parent.width - 60)
             height: 44

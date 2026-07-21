@@ -15,6 +15,7 @@
 // Build with the core sources + platform_{win,posix}.cpp.
 
 #include "../core/covers.h"
+#include "../core/custom_games.h"
 #include "../core/epic_games.h"
 #include "../core/store_covers.h"
 #include "../core/gog_games.h"
@@ -147,6 +148,22 @@ static void cmdStoreCovers() {
     }
 }
 
+static void cmdCustom() {
+    auto games = custom::installedGames();
+    if (games.empty()) { std::printf("(no custom games added yet)\n"); return; }
+    for (const auto& g : games) {
+        std::printf("%-40s  id=%s%s\n", g.name.c_str(), g.launchId.c_str(),
+                    g.fullyInstalled ? "" : "  (file missing)");
+        if (auto e = custom::find(g.launchId)) {
+            auto argv = custom::launchArgv(*e);
+            std::string cmd;
+            for (const auto& a : argv) { if (!cmd.empty()) cmd += ' '; cmd += a; }
+            std::printf("    launch: %s\n    cwd:    %s\n", cmd.c_str(),
+                        custom::launchWorkingDir(*e).c_str());
+        }
+    }
+}
+
 static void cmdCovers(int64_t appid) {
     auto bytes = covers::coverBytes(appid);
     if (bytes) std::printf("cover %lld: %zu bytes\n", (long long)appid, bytes->size());
@@ -161,8 +178,9 @@ int main(int argc, char** argv) {
     else if (cmd == "epic") cmdEpic();
     else if (cmd == "gog") cmdGog();
     else if (cmd == "xbox") cmdXbox();
+    else if (cmd == "custom") cmdCustom();
     else if (cmd == "covers" && argc > 2) cmdCovers(std::stoll(argv[2]));
     else if (cmd == "storecovers") cmdStoreCovers();
-    else { std::printf("usage: ssdiag [paths|games|accounts|epic|gog|xbox|covers <appid>|storecovers]\n"); return 2; }
+    else { std::printf("usage: ssdiag [paths|games|accounts|epic|gog|xbox|custom|covers <appid>|storecovers]\n"); return 2; }
     return 0;
 }

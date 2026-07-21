@@ -175,6 +175,95 @@ void openUri(const std::string& uri) {
 }
 
 namespace {
+void put16(std::string& s, uint16_t v) {
+    s.push_back((char)(v & 0xFF)); s.push_back((char)((v >> 8) & 0xFF));
+}
+void put32(std::string& s, uint32_t v) {
+    s.push_back((char)(v & 0xFF));        s.push_back((char)((v >> 8) & 0xFF));
+    s.push_back((char)((v >> 16) & 0xFF)); s.push_back((char)((v >> 24) & 0xFF));
+}
+
+// Wrap a top-down BGRA pixel buffer in a 32-bpp BMP (BITMAPV4HEADER with an alpha
+// mask, written bottom-up). Qt's image loader reads this incl. the alpha channel;
+// even if a reader ignores alpha, transparent pixels read as black — which blends
+// into ORBIT's near-black tiles, so it degrades gracefully.
+std::string bmpFromBGRA(const std::vector<unsigned char>& px, int w, int h) {
+    const uint32_t header = 14 + 108;
+    const uint32_t imgSize = (uint32_t)w * (uint32_t)h * 4;
+    std::string s;
+    s.reserve(header + imgSize);
+    s.push_back('B'); s.push_back('M');          // BITMAPFILEHEADER
+    put32(s, header + imgSize);                  // bfSize
+    put32(s, 0);                                 // bfReserved
+    put32(s, header);                            // bfOffBits
+    put32(s, 108);                               // BITMAPV4HEADER biSize
+    put32(s, (uint32_t)w);
+    put32(s, (uint32_t)h);                       // positive: bottom-up rows
+    put16(s, 1);                                 // planes
+    put16(s, 32);                                // bpp
+    put32(s, 3);                                 // BI_BITFIELDS
+    put32(s, imgSize);
+    put32(s, 2835); put32(s, 2835);              // ~72 DPI
+    put32(s, 0); put32(s, 0);                    // clrUsed / clrImportant
+    put32(s, 0x00FF0000);                        // red mask
+    put32(s, 0x0000FF00);                        // green mask
+    put32(s, 0x000000FF);                        // blue mask
+    put32(s, 0xFF000000);                        // alpha mask
+    put32(s, 0x73524742);                        // 'sRGB' color space
+    for (int i = 0; i < 12; ++i) put32(s, 0);    // endpoints (9) + gamma (3)
+    for (int y = h - 1; y >= 0; --y)             // bottom-up
+        s.append((const char*)&px[(size_t)y * w * 4], (size_t)w * 4);
+    return s;
+}
+}  // namespace
+
+std::optional<std::string> exeIcon(const std::string& exePath) {
+    if (exePath.empty()) return std::nullopt;
+    HICON hicon = nullptr;
+    // Ask for 256px; PrivateExtractIcons returns the best resource up to that size.
+    UINT got = PrivateExtractIconsW(widen(exePath).c_str(), 0, 256, 256, &hicon,
+                                    nullptr, 1, LR_DEFAULTCOLOR);
+    if (got == 0 || !hicon) return std::nullopt;
+
+    std::optional<std::string> out;
+    ICONINFO ii{};
+    if (GetIconInfo(hicon, &ii)) {
+        BITMAP bm{};
+        if (GetObject(ii.hbmColor, sizeof(bm), &bm) && bm.bmWidth > 0 && bm.bmHeight > 0) {
+            int w = bm.bmWidth, h = bm.bmHeight;
+            BITMAPINFO bi{};
+            bi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+            bi.bmiHeader.biWidth = w;
+            bi.bmiHeader.biHeight = -h;          // top-down
+            bi.bmiHeader.biPlanes = 1;
+            bi.bmiHeader.biBitCount = 32;
+            bi.bmiHeader.biCompression = BI_RGB;
+            std::vector<unsigned char> px((size_t)w * h * 4);
+            HDC dc = GetDC(nullptr);
+            if (GetDIBits(dc, ii.hbmColor, 0, h, px.data(), &bi, DIB_RGB_COLORS) == h) {
+                // Older icons store no alpha in the color plane — derive it from the
+                // AND mask (a set mask bit = transparent pixel).
+                bool hasAlpha = false;
+                for (size_t i = 3; i < px.size(); i += 4) if (px[i]) { hasAlpha = true; break; }
+                if (!hasAlpha) {
+                    std::vector<unsigned char> mask((size_t)w * h * 4);
+                    if (GetDIBits(dc, ii.hbmMask, 0, h, mask.data(), &bi, DIB_RGB_COLORS) == h)
+                        for (size_t i = 0; i < px.size(); i += 4) px[i + 3] = mask[i] ? 0 : 255;
+                    else
+                        for (size_t i = 0; i < px.size(); i += 4) px[i + 3] = 255;
+                }
+                out = bmpFromBGRA(px, w, h);
+            }
+            ReleaseDC(nullptr, dc);
+        }
+        if (ii.hbmColor) DeleteObject(ii.hbmColor);
+        if (ii.hbmMask) DeleteObject(ii.hbmMask);
+    }
+    DestroyIcon(hicon);
+    return out;
+}
+
+namespace {
 struct EnumCtx { bool found = false; };
 BOOL CALLBACK enumProc(HWND hwnd, LPARAM lparam) {
     if (!IsWindowVisible(hwnd)) return TRUE;

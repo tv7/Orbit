@@ -54,6 +54,85 @@ TEST_CASE(xbox_cover_reads_local_logo) {
              false);
 }
 
+TEST_CASE(custom_cover_prefers_local_then_steam_search) {
+    fs::path data = freshDir("custom");
+    appdata::setDir(data);
+    std::ofstream(data / "mine.png", std::ios::binary) << "\x89PNG-mine";
+
+    // coverHint is "<name>|<local image>|<exe>".
+    // 1. A user-picked local image wins outright (no network even offered).
+    auto local = store_covers::coverBytes(Store::Custom, "my-game",
+        std::string("My Game|") + (data / "mine.png").string() + "|", 7001, false);
+    CHECK(local.has_value());
+    CHECK_EQ(*local, std::string("\x89PNG-mine"));
+
+    // 2. No local image / breadcrumb -> match the name on Steam's store
+    //    (storesearch -> appid -> Steam cover), then disk-cache the hit.
+    int fetches = 0;
+    http::setFetcher([&](const std::string& url) -> std::optional<std::string> {
+        ++fetches;
+        if (url.find("store.steampowered.com/api/storesearch") != std::string::npos)
+            return std::string(R"({"total":1,"items":[{"id":570,"name":"Dota 2"}]})");
+        if (url.find("/apps/570/") != std::string::npos) return std::string("STEAMART");
+        return std::nullopt;
+    });
+    auto autoArt = store_covers::coverBytes(Store::Custom, "dota", "Dota 2||", 7002);
+    CHECK_EQ(autoArt.value_or(""), std::string("STEAMART"));
+    int after = fetches;
+    auto again = store_covers::coverBytes(Store::Custom, "dota", "Dota 2||", 7002);
+    CHECK_EQ(again.value_or(""), std::string("STEAMART"));
+    CHECK_EQ(fetches, after);                        // served from the custom disk cache
+    http::setFetcher({});
+
+    // 3. No image, no match, offline -> nothing (plain gradient tile; the exe-icon
+    //    fallback is Windows-only so it's nullopt here).
+    CHECK_EQ(store_covers::coverBytes(Store::Custom, "x", "Nope||", 7003, false).has_value(),
+             false);
+    fs::remove_all(data);
+}
+
+TEST_CASE(custom_cover_uses_install_folder_breadcrumbs) {
+    fs::path data = freshDir("custombread");
+    appdata::setDir(data);
+    // A game dir with the original store's leftovers + a (fake) exe next to them.
+    fs::path gameDir = data / "GameDir";
+    fs::create_directories(gameDir);
+    std::ofstream(gameDir / "steam_appid.txt", std::ios::binary) << "620\r\n";
+    fs::path exe = gameDir / "game.exe";
+    std::ofstream(exe, std::ios::binary) << "MZ";
+    std::string hint = std::string("Some Game||") + exe.string();
+
+    http::setFetcher([&](const std::string& url) -> std::optional<std::string> {
+        // steam_appid.txt => appid 620 => Steam cover via the flat CDN. The name
+        // search must NOT be reached (the breadcrumb resolves first).
+        if (url.find("storesearch") != std::string::npos) return std::string("SHOULD-NOT-HAPPEN");
+        if (url.find("/apps/620/") != std::string::npos) return std::string("PORTAL2ART");
+        return std::nullopt;
+    });
+    auto got = store_covers::coverBytes(Store::Custom, "some-game", hint, 8001);
+    CHECK_EQ(got.value_or(""), std::string("PORTAL2ART"));
+    http::setFetcher({});
+
+    // GOG breadcrumb: goggame-<id>.info => product id => GOG box art.
+    fs::path gogDir = data / "GogDir";
+    fs::create_directories(gogDir);
+    std::ofstream(gogDir / "goggame-1207664663.info", std::ios::binary)
+        << R"({"gameId":"1207664663","name":"X"})";
+    fs::path gexe = gogDir / "g.exe";
+    std::ofstream(gexe, std::ios::binary) << "MZ";
+    http::setFetcher([&](const std::string& url) -> std::optional<std::string> {
+        if (url == "https://api.gog.com/v2/games/1207664663")
+            return std::string(R"({"_links":{"boxArtImage":{"href":"//images.gog.com/b.jpg"}}})");
+        if (url == "https://images.gog.com/b.jpg") return std::string("GOGBOX");
+        return std::nullopt;
+    });
+    auto gog = store_covers::coverBytes(Store::Custom, "x",
+        std::string("X||") + gexe.string(), 8002);
+    CHECK_EQ(gog.value_or(""), std::string("GOGBOX"));
+    http::setFetcher({});
+    fs::remove_all(data);
+}
+
 TEST_CASE(gog_cover_fetches_boxart_and_disk_caches) {
     fs::path data = freshDir("gog");
     appdata::setDir(data);

@@ -264,6 +264,33 @@ Item {
                                 }
                             }
                         }
+                        // edit (Custom games only)
+                        Rectangle {
+                            visible: root.game !== null && root.game.store === "Custom" && !backend.launching
+                            width: editLabel.implicitWidth + 40; height: 48; radius: 24
+                            color: editHover.containsMouse ? Theme.fillHover : "transparent"
+                            border.width: 1; border.color: Theme.line
+                            Label { id: editLabel; anchors.centerIn: parent; text: qsTr("Edit…")
+                                color: Theme.muted
+                                font.family: Theme.fontBody; font.pixelSize: 13; font.weight: Font.Bold }
+                            MouseArea { id: editHover; anchors.fill: parent; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: AppState.openEditGame(root.game) }
+                        }
+                        // remove from library (Custom games only)
+                        Rectangle {
+                            visible: root.game !== null && root.game.store === "Custom" && !backend.launching
+                            width: remLabel.implicitWidth + 40; height: 48; radius: 24
+                            color: remHover.containsMouse ? Theme.bad : "transparent"
+                            border.width: 1; border.color: Theme.bad
+                            Label { id: remLabel; anchors.centerIn: parent; text: qsTr("Remove")
+                                color: remHover.containsMouse ? "#fff" : Theme.bad
+                                font.family: Theme.fontBody; font.pixelSize: 13; font.weight: Font.Bold }
+                            MouseArea { id: remHover; anchors.fill: parent; hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: { backend.removeCustomGame(root.game.launchId); AppState.back() }
+                            }
+                        }
                     }
                 }
 

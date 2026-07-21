@@ -2,11 +2,15 @@
 
 #include "../core/autostart.h"
 #include "../core/covers.h"
+#include "../core/custom_games.h"
+#include "../core/platform.h"
 #include "../core/store_covers.h"
 #include "../core/settings.h"
 #include "../core/steam_accounts.h"
 #include "../core/steam_launcher.h"   // ss::steam::play (online + offline flag method)
 #include "../core/steam_switcher.h"
+#include "../core/updates.h"
+#include "../core/version.h"
 
 #include <QBuffer>
 #include <QCoreApplication>
@@ -53,6 +57,7 @@ StoreBrand storeBrand(Store s) {
         case Store::Epic:  return {"epic",  "Epic Games","EPIC",      "#a78bfa", "#160e2e"};
         case Store::Gog:   return {"gog",   "GOG",       "GOG",       "#c084fc", "#22093a"};
         case Store::Xbox:  return {"xbox",  "Game Pass", "GAME PASS", "#4ade80", "#0c2913"};
+        case Store::Custom:return {"custom","Custom",    "CUSTOM",    "#8b93a7", "#10131a"};
     }
     return {"?", "Unknown", "?", "#9aa0a6", "#ffffff"};
 }
@@ -71,6 +76,7 @@ Backend::Backend(QObject* parent) : QObject(parent) {
     storeImpls_.push_back(makeEpicStore());
     storeImpls_.push_back(makeGogStore());
     storeImpls_.push_back(makeXboxStore());
+    storeImpls_.push_back(makeCustomStore());
     pool_.setMaxThreadCount(6);
     language_ = QString::fromStdString(settings::language());
     onboarded_ = settings::onboarded();
@@ -267,7 +273,7 @@ void Backend::buildState() {
 
     // Per-store cards for the sidebar STORES panel / Accounts view / Manage panel.
     QVariantList storeCards;
-    for (Store s : {Store::Steam, Store::Epic, Store::Gog, Store::Xbox}) {
+    for (Store s : {Store::Steam, Store::Epic, Store::Gog, Store::Xbox, Store::Custom}) {
         StoreBrand b = storeBrand(s);
         int n = storeCounts.count(s) ? storeCounts[s] : 0;
         QVariantMap card;
@@ -321,11 +327,13 @@ void Backend::requestCover(qint64 appid) {
                           << " -> " << (bytes ? qint64(bytes->size()) : -1) << " bytes";
         QString dataUrl;
         if (bytes) {
-            // Sniff the mime — Xbox logos are PNGs, Steam/network art is JPEG.
-            const bool png = bytes->size() > 4 && bytes->compare(1, 3, "PNG") == 0;
+            // Sniff the mime — Steam/network art is JPEG, Xbox logos are PNG, a
+            // custom game's exe-icon fallback is a BMP.
+            const char* mime = "image/jpeg";
+            if (bytes->size() > 4 && bytes->compare(1, 3, "PNG") == 0) mime = "image/png";
+            else if (bytes->size() > 2 && (*bytes)[0] == 'B' && (*bytes)[1] == 'M') mime = "image/bmp";
             QByteArray b64 = QByteArray::fromStdString(*bytes).toBase64();
-            dataUrl = QString(png ? "data:image/png;base64," : "data:image/jpeg;base64,") +
-                      QString::fromLatin1(b64);
+            dataUrl = QString("data:") + mime + ";base64," + QString::fromLatin1(b64);
         }
         QMetaObject::invokeMethod(this, [this, appid, dataUrl] {
             emit coverReady(appid, dataUrl);
@@ -354,10 +362,11 @@ void Backend::requestHero(qint64 appid) {
                           << " -> " << (bytes ? qint64(bytes->size()) : -1) << " bytes";
         QString dataUrl;
         if (bytes) {
-            const bool png = bytes->size() > 4 && bytes->compare(1, 3, "PNG") == 0;
+            const char* mime = "image/jpeg";
+            if (bytes->size() > 4 && bytes->compare(1, 3, "PNG") == 0) mime = "image/png";
+            else if (bytes->size() > 2 && (*bytes)[0] == 'B' && (*bytes)[1] == 'M') mime = "image/bmp";
             QByteArray b64 = QByteArray::fromStdString(*bytes).toBase64();
-            dataUrl = QString(png ? "data:image/png;base64," : "data:image/jpeg;base64,") +
-                      QString::fromLatin1(b64);
+            dataUrl = QString("data:") + mime + ";base64," + QString::fromLatin1(b64);
         }
         QMetaObject::invokeMethod(this, [this, appid, dataUrl] {
             emit heroReady(appid, dataUrl);
@@ -477,6 +486,101 @@ void Backend::addAccount() {
 void Backend::pinToAccount(qint64 appid, const QString& steamid64) {
     steam::setOverride(appid, steamid64.toStdString());
     refresh();
+}
+
+void Backend::addCustomGame(const QString& name, const QString& exePath,
+                            const QString& args, const QString& coverPath) {
+    if (exePath.isEmpty()) {
+        emit status(tr("Pick a game file to add."));
+        return;
+    }
+    std::string id = custom::add(name.toStdString(), exePath.toStdString(),
+                                 args.toStdString(), coverPath.toStdString());
+    if (id.empty()) {
+        emit status(tr("Couldn't add that game."));
+        return;
+    }
+    emit status(tr("Added \"%1\" to your library.")
+                    .arg(name.isEmpty() ? QString::fromStdString(id) : name));
+    refresh();
+}
+
+void Backend::updateCustomGame(const QString& launchId, const QString& name,
+                               const QString& exePath, const QString& args,
+                               const QString& coverPath) {
+    custom::Entry e;
+    e.id = launchId.toStdString();
+    e.name = name.toStdString();
+    e.exe = exePath.toStdString();
+    e.args = args.toStdString();
+    e.coverPath = coverPath.toStdString();
+    if (!custom::update(e)) {
+        emit status(tr("Couldn't update that game."));
+        return;
+    }
+    emit status(tr("Saved changes to \"%1\".").arg(name));
+    refresh();
+}
+
+void Backend::removeCustomGame(const QString& launchId) {
+    if (custom::remove(launchId.toStdString()))
+        emit status(tr("Removed the game from your library."));
+    refresh();
+}
+
+QString Backend::appVersion() const { return QString::fromUtf8(kVersion); }
+
+void Backend::checkForUpdates(bool manual) {
+    updateState_ = "checking";
+    emit updateChanged();
+    pool_.start([this, manual] {
+        auto rel = updates::latestRelease("tv7/Orbit");
+        QString state, version, url, notes;
+        if (!rel) {
+            state = "error";
+        } else if (updates::compareVersions(rel->version, kVersion) > 0) {
+            version = QString::fromStdString(rel->version);
+            url = QString::fromStdString(rel->url);
+            notes = QString::fromStdString(rel->notes);
+            // The quiet startup check honours a skipped version; a manual check
+            // always surfaces it.
+            bool skipped = !manual && rel->version == settings::skipUpdate();
+            state = skipped ? "latest" : "available";
+        } else {
+            state = "latest";   // running the newest (or a dev build ahead of it)
+        }
+        QMetaObject::invokeMethod(this, [this, state, version, url, notes] {
+            updateState_ = state;
+            latestVersion_ = version;
+            updateUrl_ = url;
+            updateNotes_ = notes;
+            emit updateChanged();
+        }, Qt::QueuedConnection);
+    });
+}
+
+void Backend::openDownloadPage() {
+    if (!updateUrl_.isEmpty()) platform::openUri(updateUrl_.toStdString());
+    else platform::openUri("https://github.com/tv7/Orbit/releases/latest");
+}
+
+void Backend::skipThisUpdate() {
+    if (latestVersion_.isEmpty()) return;
+    settings::setSkipUpdate(latestVersion_.toStdString());
+    updateState_ = "latest";     // hide the banner (Settings still shows the version)
+    emit updateChanged();
+}
+
+QVariantMap Backend::customGame(const QString& launchId) const {
+    QVariantMap out;
+    if (auto e = custom::find(launchId.toStdString())) {
+        out["launchId"] = QString::fromStdString(e->id);
+        out["name"] = QString::fromStdString(e->name);
+        out["exe"] = QString::fromStdString(e->exe);
+        out["args"] = QString::fromStdString(e->args);
+        out["coverPath"] = QString::fromStdString(e->coverPath);
+    }
+    return out;
 }
 
 }  // namespace ss::ui

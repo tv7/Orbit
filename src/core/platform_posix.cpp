@@ -73,6 +73,8 @@ void openUri(const std::string& uri) {
 
 bool steamWindowPresent() { return false; }  // Windows-only signal
 
+std::optional<std::string> exeIcon(const std::string&) { return std::nullopt; }  // Windows-only
+
 std::optional<std::string> getEnv(const std::string& name) {
     const char* v = std::getenv(name.c_str());
     if (v && *v) return std::string(v);

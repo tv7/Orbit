@@ -74,7 +74,8 @@ QtObject {
         "Steam": { key: "steam", name: "Steam",      short: "STEAM",     color: "#66c0f4", fg: "#062032" },
         "Epic":  { key: "epic",  name: "Epic Games", short: "EPIC",      color: "#a78bfa", fg: "#160e2e" },
         "GOG":   { key: "gog",   name: "GOG",        short: "GOG",       color: "#c084fc", fg: "#22093a" },
-        "Xbox":  { key: "xbox",  name: "Game Pass",  short: "GAME PASS", color: "#4ade80", fg: "#0c2913" }
+        "Xbox":  { key: "xbox",  name: "Game Pass",  short: "GAME PASS", color: "#4ade80", fg: "#0c2913" },
+        "Custom":{ key: "custom",name: "Custom",     short: "CUSTOM",    color: "#8b93a7", fg: "#10131a" }
     })
     function store(name) {
         return storeMeta[name] || { key: "?", name: name, short: name, color: "#9aa0a6", fg: "#ffffff" }

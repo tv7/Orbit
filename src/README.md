@@ -160,3 +160,48 @@ the comparison, check out the `v1.0.0` tag, which contains both stacks.
   drag/resize still works with the new top bar.
 - **Shipped:** v1.0.0 released as `Orbit-portable.zip` (windeployqt); the legacy
   Python/Tauri stack is deleted from the tree (last present at the `v1.0.0` tag).
+- **Custom games — done + tested headless (post-v1.0.0):** a fifth store,
+  `Store::Custom`, for anything the four real stores don't detect. Unlike them it's
+  **user-authored**, not enumerated: `core/custom_games.*` persists a hand-maintained
+  list to **`custom_games.json`** (sibling of settings.json) and `core/stores/
+  custom_store.cpp` wraps it as an `IStore` that launches the game's exe directly (GOG's
+  direct-launch pattern; `platform::spawnDetached(argv, workingDir)`). Works on every
+  platform (no registry/store), so the builders + CRUD are unit-tested (`test_custom.cpp`,
+  64 tests total). Backend gained `addCustomGame`/`updateCustomGame`/`removeCustomGame`/
+  `customGame`/`urlToLocalFile` invokables + a `launchId` model role (so the detail view
+  can address a Custom row). UI: an **"＋ Add game"** pill in the Library chip row and
+  **Edit/Remove** on the Detail view (Custom only), both driving a shared
+  **`AddGameDialog.qml`** (exe picker via `QtQuick.Dialogs` FileDialog, optional
+  name/args/cover-image), routed through `AppState.openAddGame()/openEditGame()`. Custom
+  games get the neutral slate brand (`Backend::storeBrand` + `Theme.storeMeta`, keep in
+  sync) and a "Custom" filter chip when populated. **Cover art** resolves in `store_covers`
+  from anchors the game itself carries — no API key — in this order (`coverHint` is
+  `"<name>|<local image path>|<exe path>"`): **user-picked image → cached → `steam_appid.txt`
+  breadcrumb in the install folder → real Steam art; `goggame-<id>.info` breadcrumb → real GOG
+  art; name match on Steam's storesearch; the exe's own embedded icon** (`platform::exeIcon`,
+  Windows-only, returned as a 32-bpp BMP so a tile is never a blank gradient). Only real hits
+  are disk-cached (the icon isn't, so a network source can take over later). Reuses
+  `covers::coverBytes`/`heroBytes` for the Steam path. A "Choose cover" pick (or Edit → Clear
+  to drop back to auto) always wins. Excluded from the Accounts "auto-detected stores" list
+  (it's manual). Verify with `ssdiag custom`. **HW-verify the exe-icon fallback** — it's
+  untested Win32 (PrivateExtractIcons → GetDIBits → BMP; BMP alpha via BITMAPV4HEADER, degrades
+  to black-on-dark if a reader drops alpha), and it links **gdi32** (added to `sscore`).
+  **NOTE:** the
+  new qsTr strings aren't in `ar.qm` yet — they show English under RTL until the catalog
+  is regenerated (Qt LinguistTools; watch the pyside6-lupdate ar.ts corruption trap).
+- **Update check — done + tested headless (post-v1.0.0):** notify-only (a portable app
+  shouldn't swap a running exe): `core/updates.*` GETs `api.github.com/repos/tv7/Orbit/
+  releases/latest` via the injected fetcher, parses `tag_name`/`html_url`/`body`, and
+  `compareVersions` (dotted-numeric, tolerates a leading `v`, ignores pre-release suffixes)
+  decides if it's newer than **`core/version.h` `ss::kVersion`** (the single source of truth).
+  Backend exposes `appVersion` + `updateState`/`updateAvailable`/`latestVersion`/`updateUrl`/
+  `updateNotes` + `checkForUpdates(manual)`/`openDownloadPage()`/`skipThisUpdate()`. Main.qml
+  runs a quiet check on launch (honours a skipped version persisted in settings.json's
+  `skip_update`) and shows a dismissible bottom banner (Download / Skip / ✕); SettingsView has
+  an ABOUT card (current version + "Check for updates" → Download). No API key (60 req/hr
+  unauth is plenty for once-per-launch). Tests in `test_updates.cpp` (68 total).
+  **⚠ RELEASE WORKFLOW:** before building a release, **bump `ss::kVersion` in
+  `core/version.h`** and publish the GitHub release with a **matching tag** (`v1.2.0` or
+  `1.2.0`). The running build compares its own `kVersion` to the latest tag — if they don't
+  advance together, users are never notified. This build is set to **1.2.0** (bundles custom
+  games + the updater).

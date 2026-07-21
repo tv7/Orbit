@@ -211,7 +211,10 @@ Flickable {
                 model: backend.stores
                 delegate: Rectangle {
                     required property var modelData
-                    visible: !modelData.isSteam
+                    // Steam has its own section above; Custom is user-added, not an
+                    // auto-detected store, so it's excluded here (it still appears in
+                    // the library grid + its own filter chip).
+                    visible: !modelData.isSteam && modelData.key !== "custom"
                     Layout.fillWidth: true
                     implicitHeight: 72
                     radius: Theme.rLg

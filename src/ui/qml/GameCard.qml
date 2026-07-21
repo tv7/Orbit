@@ -20,6 +20,7 @@ Item {
     // Everything AppState.open / play needs, copied off the model row.
     function gameObject() {
         return { appid: model.appid, name: model.name, store: model.store,
+                 launchId: model.launchId,
                  accountId: model.accountId, accountName: model.accountName,
                  accountColor: model.accountColor, mapped: model.mapped,
                  fullyInstalled: model.fullyInstalled,

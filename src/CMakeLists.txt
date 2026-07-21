@@ -14,6 +14,7 @@ set(CORE_SOURCES
     core/appdata.cpp
     core/autostart.cpp
     core/settings.cpp
+    core/updates.cpp
     core/steam_paths.cpp
     core/steam_games.cpp
     core/steam_accounts.cpp
@@ -24,11 +25,13 @@ set(CORE_SOURCES
     core/epic_games.cpp
     core/gog_games.cpp
     core/xbox_games.cpp
+    core/custom_games.cpp
     core/sha256.cpp
     core/stores/steam_store.cpp
     core/stores/epic_store.cpp
     core/stores/gog_store.cpp
     core/stores/xbox_store.cpp
+    core/stores/custom_store.cpp
 )
 if(WIN32)
     list(APPEND CORE_SOURCES core/platform_win.cpp)
@@ -39,7 +42,7 @@ endif()
 add_library(sscore STATIC ${CORE_SOURCES})
 target_include_directories(sscore PUBLIC ${CMAKE_CURRENT_SOURCE_DIR})
 if(WIN32)
-    target_link_libraries(sscore PRIVATE shell32 advapi32 user32)
+    target_link_libraries(sscore PRIVATE shell32 advapi32 user32 gdi32)
 endif()
 
 # --- Diagnostic CLI (Phase 1 parity gate) ------------------------------------
@@ -97,6 +100,7 @@ if(Qt6_FOUND)
             ui/qml/SearchPalette.qml
             ui/qml/LibraryView.qml
             ui/qml/DetailView.qml
+            ui/qml/AddGameDialog.qml
             ui/qml/AccountsView.qml
             ui/qml/SettingsView.qml
             ui/qml/OnboardingOverlay.qml

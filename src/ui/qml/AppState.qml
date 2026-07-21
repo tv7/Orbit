@@ -30,6 +30,14 @@ QtObject {
     function startOnboarding() { onboarding = "welcome" }
     function obGo(step) { onboarding = step }
 
+    // Add/Edit custom-game dialog. `addGameOpen` shows it; `editGame` is the game
+    // being edited (a Custom row) or null when adding a fresh one.
+    property bool addGameOpen: false
+    property var editGame: null
+    function openAddGame()      { editGame = null; addGameOpen = true }
+    function openEditGame(game) { editGame = game; addGameOpen = true }
+    function closeAddGame()     { addGameOpen = false; editGame = null }
+
     function open(game) {
         selected = game;
         previousView = view;

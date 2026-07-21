@@ -40,5 +40,6 @@ std::unique_ptr<IStore> makeSteamStore();
 std::unique_ptr<IStore> makeEpicStore();
 std::unique_ptr<IStore> makeGogStore();
 std::unique_ptr<IStore> makeXboxStore();
+std::unique_ptr<IStore> makeCustomStore();
 
 }  // namespace ss

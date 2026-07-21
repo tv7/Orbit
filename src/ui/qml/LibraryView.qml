@@ -253,6 +253,27 @@ Item {
 
                     Item { Layout.fillWidth: true }
 
+                    // add-a-game pill (Custom store: pick any exe)
+                    Rectangle {
+                        implicitWidth: addRow.implicitWidth + 30; implicitHeight: 32
+                        radius: 16
+                        color: addHover.containsMouse ? Theme.fill : "transparent"
+                        border.width: 1; border.color: Theme.line
+                        Row {
+                            id: addRow
+                            anchors.centerIn: parent
+                            spacing: 8
+                            Label { text: "＋"; color: Theme.muted; font.pixelSize: 14
+                                anchors.verticalCenter: parent.verticalCenter }
+                            Label { text: qsTr("Add game"); color: Theme.muted
+                                font.family: Theme.fontBody; font.pixelSize: 12; font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter }
+                        }
+                        MouseArea { id: addHover; anchors.fill: parent; hoverEnabled: true
+                            cursorShape: Qt.PointingHandCursor
+                            onClicked: AppState.openAddGame() }
+                    }
+
                     // refresh pill (rescans all stores; mirrors the Accounts pill)
                     Rectangle {
                         implicitWidth: refreshRow.implicitWidth + 30; implicitHeight: 32
@@ -318,7 +339,7 @@ Item {
                 Label { Layout.alignment: Qt.AlignHCenter
                     Layout.preferredWidth: 360
                     horizontalAlignment: Text.AlignHCenter; wrapMode: Text.WordWrap
-                    text: qsTr("Install a game in Steam, Epic, GOG or Game Pass and it will show up here.")
+                    text: qsTr("Install a game in Steam, Epic, GOG or Game Pass and it will show up here — or use “Add game” to add any other game yourself.")
                     color: Theme.faint; font.family: Theme.fontBody; font.pixelSize: 13 }
             }
         }

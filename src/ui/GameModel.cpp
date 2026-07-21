@@ -13,6 +13,7 @@ QVariant GameModel::data(const QModelIndex& index, int role) const {
     switch (role) {
         case AppidRole: return r.appid;
         case StoreRole: return QString::fromUtf8(storeName(r.store));
+        case LaunchIdRole: return r.launchId;
         case NameRole: return r.name;
         case FullyInstalledRole: return r.fullyInstalled;
         case AccountIdRole: return r.accountId;
@@ -27,7 +28,8 @@ QVariant GameModel::data(const QModelIndex& index, int role) const {
 
 QHash<int, QByteArray> GameModel::roleNames() const {
     return {
-        {AppidRole, "appid"}, {StoreRole, "store"}, {NameRole, "name"},
+        {AppidRole, "appid"}, {StoreRole, "store"}, {LaunchIdRole, "launchId"},
+        {NameRole, "name"},
         {FullyInstalledRole, "fullyInstalled"}, {AccountIdRole, "accountId"},
         {AccountNameRole, "accountName"}, {AccountColorRole, "accountColor"},
         {MappedRole, "mapped"},

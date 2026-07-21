@@ -202,6 +202,29 @@ Flickable {
             }
         }
 
+        // ---- ABOUT ----
+        SectLabel { Layout.topMargin: 24; Layout.bottomMargin: 12; text: qsTr("ABOUT") }
+        Card {
+            SettingRow {
+                title: qsTr("Version %1").arg(backend.appVersion)
+                desc: {
+                    if (backend.updateState === "checking") return qsTr("Checking for updates…");
+                    if (backend.updateState === "available")
+                        return qsTr("ORBIT %1 is available to download.").arg(backend.latestVersion);
+                    if (backend.updateState === "latest") return qsTr("You're on the latest version.");
+                    if (backend.updateState === "error") return qsTr("Couldn't reach GitHub to check for updates.");
+                    return qsTr("Check GitHub for a newer release.");
+                }
+                ActButton {
+                    label: backend.updateState === "checking" ? qsTr("Checking…")
+                         : backend.updateAvailable ? qsTr("↓ Download %1").arg(backend.latestVersion)
+                         : qsTr("Check for updates")
+                    onClicked: backend.updateAvailable ? backend.openDownloadPage()
+                                                       : backend.checkForUpdates(true)
+                }
+            }
+        }
+
         Label {
             Layout.topMargin: 20; Layout.fillWidth: true
             text: qsTr("Tip: if every account is your own, Steam Families may remove the need to switch at all. ORBIT never types passwords — accounts must be signed in once with “Remember me”.")

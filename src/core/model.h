@@ -15,8 +15,9 @@ namespace ss {
 using Notify = std::function<void(const std::string&)>;
 
 // Which storefront a game/account belongs to. Steam is the only one with account
-// switching; the others just enumerate + launch.
-enum class Store { Steam, Epic, Gog, Xbox };
+// switching; the others just enumerate + launch. Custom is user-authored: an
+// arbitrary game exe the user added by hand (no store behind it).
+enum class Store { Steam, Epic, Gog, Xbox, Custom };
 
 const char* storeName(Store s);
 
@@ -32,7 +33,11 @@ struct Game {
     bool fullyInstalled = false;
     std::string lastOwner;        // SteamID64 (Steam only)
     std::string coverHint;        // store-specific art hint: Epic = CatalogItemId,
-                                  // Xbox = absolute path of the local logo PNG
+                                  // Xbox = "<StoreId>|<local logo path>",
+                                  // Custom = "<name>|<local image path>|<exe path>"
+                                  // (local image overrides; exe path drives folder
+                                  // breadcrumbs + embedded-icon fallback; name is the
+                                  // Steam-store lookup)
                                   // (GOG needs none — launchId is the product id)
 };
 

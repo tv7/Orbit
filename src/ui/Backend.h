@@ -14,7 +14,9 @@
 #include <QObject>
 #include <QString>
 #include <QThreadPool>
+#include <QUrl>
 #include <QVariantList>
+#include <QVariantMap>
 
 #include <atomic>
 #include <map>
@@ -44,6 +46,14 @@ class Backend : public QObject {
     Q_PROPERTY(bool autostartSupported READ autostartSupported CONSTANT)
     Q_PROPERTY(bool runAtStartup READ runAtStartup NOTIFY runAtStartupChanged)
     Q_PROPERTY(qint64 lastScanTime READ lastScanTime NOTIFY stateChanged)
+    // Update check (GitHub Releases). appVersion is this build; the rest describe
+    // the newest release found by checkForUpdates().
+    Q_PROPERTY(QString appVersion READ appVersion CONSTANT)
+    Q_PROPERTY(QString updateState READ updateState NOTIFY updateChanged)  // ""|checking|latest|available|error
+    Q_PROPERTY(bool updateAvailable READ updateAvailable NOTIFY updateChanged)
+    Q_PROPERTY(QString latestVersion READ latestVersion NOTIFY updateChanged)
+    Q_PROPERTY(QString updateUrl READ updateUrl NOTIFY updateChanged)
+    Q_PROPERTY(QString updateNotes READ updateNotes NOTIFY updateChanged)
 
 public:
     explicit Backend(QObject* parent = nullptr);
@@ -65,6 +75,12 @@ public:
     bool autostartSupported() const;
     bool runAtStartup() const { return runAtStartup_; }
     qint64 lastScanTime() const { return lastScanTime_; }
+    QString appVersion() const;
+    QString updateState() const { return updateState_; }
+    bool updateAvailable() const { return updateState_ == "available"; }
+    QString latestVersion() const { return latestVersion_; }
+    QString updateUrl() const { return updateUrl_; }
+    QString updateNotes() const { return updateNotes_; }
 
     // ---- invoked from QML (each returns immediately, works off-thread) ----
     Q_INVOKABLE void refresh();                       // ~ request_state
@@ -74,6 +90,19 @@ public:
     Q_INVOKABLE void cancel();                        // ~ cancel
     Q_INVOKABLE void addAccount();                    // ~ add_account
     Q_INVOKABLE void pinToAccount(qint64 appid, const QString& steamid64);  // override
+    // Custom (user-added) games: add an arbitrary exe to the library, edit or
+    // remove one. Each persists to custom_games.json and rescans.
+    Q_INVOKABLE void addCustomGame(const QString& name, const QString& exePath,
+                                   const QString& args, const QString& coverPath);
+    Q_INVOKABLE void updateCustomGame(const QString& launchId, const QString& name,
+                                      const QString& exePath, const QString& args,
+                                      const QString& coverPath);
+    Q_INVOKABLE void removeCustomGame(const QString& launchId);
+    // Convert a FileDialog "file://" URL to a native local path (for the add dialog).
+    Q_INVOKABLE QString urlToLocalFile(const QUrl& url) const { return url.toLocalFile(); }
+    // The full stored entry for a custom game (name/exe/args/coverPath), so the
+    // edit dialog can prefill fields the display model doesn't carry. Empty if none.
+    Q_INVOKABLE QVariantMap customGame(const QString& launchId) const;
     Q_INVOKABLE void switchTo(const QString& steamid64);  // switch+restart Steam, NO launch
     Q_INVOKABLE void setHeroMode(const QString& mode);    // "last" | "random" (persists)
     Q_INVOKABLE void setOfflineDefault(bool value);       // persists
@@ -87,6 +116,12 @@ public:
     Q_INVOKABLE void setSortOrder(const QString& order);   // "az" | "za"
     Q_INVOKABLE void setLanguage(const QString& lang);     // ~ set_language (persists)
     Q_INVOKABLE void completeOnboarding();                 // persist onboarded=true
+    // Ask GitHub for the latest release. `manual` = the user pressed the Settings
+    // button (always reports; ignores a skipped version); false = the quiet startup
+    // check (suppresses the banner for a version the user chose to skip).
+    Q_INVOKABLE void checkForUpdates(bool manual = false);
+    Q_INVOKABLE void openDownloadPage();                   // open the release in a browser
+    Q_INVOKABLE void skipThisUpdate();                     // hide the banner for this version
 
 signals:
     void stateChanged();
@@ -97,6 +132,7 @@ signals:
     void heroModeChanged();
     void offlineDefaultChanged();
     void runAtStartupChanged();
+    void updateChanged();
     void coverReady(qint64 appid, const QString& dataUrl);
     void heroReady(qint64 appid, const QString& dataUrl);
     void launchStarted();
@@ -121,6 +157,10 @@ private:
     bool offlineDefault_ = false;
     bool runAtStartup_ = false;
     qint64 lastScanTime_ = 0;
+    QString updateState_;       // ""|checking|latest|available|error
+    QString latestVersion_;
+    QString updateUrl_;
+    QString updateNotes_;
 
     // A game's identity for launch/cover routing. Steam games are keyed by their
     // real appid; non-Steam stores (Epic, …) have no numeric id, so Backend hands

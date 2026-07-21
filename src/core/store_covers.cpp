@@ -1,10 +1,13 @@
 #include "store_covers.h"
 
 #include "appdata.h"
+#include "covers.h"
 #include "epic_games.h"
 #include "http.h"
 #include "json.h"
+#include "platform.h"
 
+#include <cctype>
 #include <filesystem>
 #include <fstream>
 #include <iterator>
@@ -139,6 +142,85 @@ std::optional<std::string> xboxCatalogHero(const std::string& storeId) {
                           "?w=1280");
 }
 
+// ---- Custom: auto-resolve art by matching the name on Steam's store -----------
+
+std::string urlEncode(const std::string& s) {
+    static const char* hex = "0123456789ABCDEF";
+    std::string out;
+    for (unsigned char c : s) {
+        if (std::isalnum(c) || c == '-' || c == '_' || c == '.' || c == '~')
+            out.push_back((char)c);
+        else { out.push_back('%'); out.push_back(hex[c >> 4]); out.push_back(hex[c & 0xF]); }
+    }
+    return out;
+}
+
+// Best-guess Steam appid for a free-text game name via the store's public search
+// suggest endpoint (no API key). nullopt when offline / no match. Lets a
+// user-added game that also exists on Steam borrow Steam's real cover + hero art.
+std::optional<int64_t> steamAppidForName(const std::string& name) {
+    if (name.empty()) return std::nullopt;
+    auto raw = http::get("https://store.steampowered.com/api/storesearch/?term=" +
+                         urlEncode(name) + "&l=english&cc=US");
+    if (!raw) return std::nullopt;
+    bool ok = false;
+    json::Value v = json::parse(*raw, &ok);
+    if (!ok) return std::nullopt;
+    const json::Value* items = v.get("items");
+    if (!items || !items->isArray() || items->arr.empty()) return std::nullopt;
+    const json::Value* id = items->arr[0].get("id");   // top match
+    if (id && id->type == json::Value::Type::Number) return (int64_t)id->num;
+    return std::nullopt;
+}
+
+// ---- Custom: breadcrumbs the original store left in the game's install folder --
+
+// The Steam appid from a `steam_appid.txt` sitting in `dir` (many games ship it),
+// else 0. The file is just the appid as text (possibly with trailing whitespace).
+int64_t steamAppidBreadcrumb(const fs::path& dir) {
+    auto raw = readFile(dir / "steam_appid.txt");
+    if (!raw) return 0;
+    int64_t id = 0;
+    for (char c : *raw) { if (c < '0' || c > '9') break; id = id * 10 + (c - '0'); }
+    return id;
+}
+
+// The GOG product id from a `goggame-<id>.info` in `dir` (GOG installs write one),
+// else "". The id is both the filename stem suffix and the JSON "gameId".
+std::string gogIdBreadcrumb(const fs::path& dir) {
+    std::error_code ec;
+    if (!fs::is_directory(dir, ec)) return "";
+    for (const auto& entry : fs::directory_iterator(dir, ec)) {
+        std::string name = entry.path().filename().string();
+        if (name.rfind("goggame-", 0) != 0 || entry.path().extension() != ".info") continue;
+        if (auto raw = readFile(entry.path())) {
+            bool ok = false;
+            json::Value v = json::parse(*raw, &ok);
+            if (ok) { std::string id = getStr(v, "gameId"); if (!id.empty()) return id; }
+        }
+        // Fall back to the id embedded in the filename (goggame-<id>.info).
+        std::string stem = entry.path().stem().string();      // goggame-<id>
+        auto dash = stem.rfind('-');
+        if (dash != std::string::npos) return stem.substr(dash + 1);
+    }
+    return "";
+}
+
+// Split a Custom coverHint "<name>|<local image>|<exe>" (Windows paths can't
+// contain '|', so this is unambiguous; a name with '|' is the only edge case).
+struct CustomHint { std::string name, localImage, exe; };
+CustomHint parseCustomHint(const std::string& hint) {
+    CustomHint h;
+    auto p1 = hint.find('|');
+    if (p1 == std::string::npos) { h.name = hint; return h; }
+    h.name = hint.substr(0, p1);
+    auto p2 = hint.find('|', p1 + 1);
+    if (p2 == std::string::npos) { h.localImage = hint.substr(p1 + 1); return h; }
+    h.localImage = hint.substr(p1 + 1, p2 - p1 - 1);
+    h.exe = hint.substr(p2 + 1);
+    return h;
+}
+
 }  // namespace
 
 std::optional<std::string> base64Decode(const std::string& in) {
@@ -216,6 +298,39 @@ std::string epicHeroUrlFromCatalog(const std::string& catalogJson,
 std::optional<std::string> coverBytes(Store store, const std::string& launchId,
                                       const std::string& coverHint, int64_t cacheId,
                                       bool allowNetwork) {
+    // Custom games have no store of their own. Resolve art from anchors the game
+    // itself carries, in order (each real hit is disk-cached; the icon is not, so a
+    // better source can still win on a later scan):
+    //   1. the user's own picked image (read fresh so swapping shows immediately),
+    //   2. a previously resolved cover (disk cache),
+    //   3. steam_appid.txt breadcrumb in the install folder -> real Steam art,
+    //   4. goggame-<id>.info breadcrumb -> real GOG art,
+    //   5. name match on Steam's store,
+    //   6. the exe's own embedded icon (universal fallback, never a blank tile).
+    if (store == Store::Custom) {
+        CustomHint h = parseCustomHint(coverHint);
+        if (!h.localImage.empty())
+            if (auto img = readFile(h.localImage)) return img;
+        if (auto cached = readFile(diskPath(cacheId))) return cached;
+        if (allowNetwork) {
+            fs::path dir = h.exe.empty() ? fs::path() : fs::path(h.exe).parent_path();
+            if (!dir.empty()) {
+                if (int64_t appid = steamAppidBreadcrumb(dir))
+                    if (auto data = covers::coverBytes(appid)) { saveDisk(cacheId, *data); return data; }
+                std::string gogId = gogIdBreadcrumb(dir);
+                if (!gogId.empty())
+                    if (auto data = gogCover(gogId)) { saveDisk(cacheId, *data); return data; }
+            }
+            if (!h.name.empty())
+                if (auto appid = steamAppidForName(h.name))
+                    if (auto data = covers::coverBytes(*appid)) { saveDisk(cacheId, *data); return data; }
+        }
+        // Universal fallback: the exe's icon. Not cached — cheap to re-extract, and
+        // keeping it out of the cache lets a network source take over once reachable.
+        if (!h.exe.empty()) return platform::exeIcon(h.exe);
+        return std::nullopt;
+    }
+
     if (auto cached = readFile(diskPath(cacheId))) return cached;
 
     std::optional<std::string> data;
@@ -247,6 +362,33 @@ std::optional<std::string> coverBytes(Store store, const std::string& launchId,
 std::optional<std::string> heroBytes(Store store, const std::string& launchId,
                                      const std::string& coverHint, int64_t cacheId,
                                      bool allowNetwork) {
+    // Custom games: same anchor order as the cover, minus the icon (a square icon
+    // is the wrong shape for a wide banner — fall through to the gradient instead).
+    if (store == Store::Custom) {
+        CustomHint h = parseCustomHint(coverHint);
+        if (!h.localImage.empty())
+            if (auto img = readFile(h.localImage)) return img;
+        if (auto cached = readFile(heroDiskPath(cacheId))) return cached;
+        if (allowNetwork) {
+            auto tryHero = [&](std::optional<std::string> data) -> std::optional<std::string> {
+                if (data) saveFile(heroDiskPath(cacheId), *data);
+                return data;
+            };
+            fs::path dir = h.exe.empty() ? fs::path() : fs::path(h.exe).parent_path();
+            if (!dir.empty()) {
+                if (int64_t appid = steamAppidBreadcrumb(dir))
+                    if (auto d = tryHero(covers::heroBytes(appid))) return d;
+                std::string gogId = gogIdBreadcrumb(dir);
+                if (!gogId.empty())
+                    if (auto d = tryHero(gogHero(gogId))) return d;
+            }
+            if (!h.name.empty())
+                if (auto appid = steamAppidForName(h.name))
+                    if (auto d = tryHero(covers::heroBytes(*appid))) return d;
+        }
+        return std::nullopt;
+    }
+
     if (auto cached = readFile(heroDiskPath(cacheId))) return cached;
     if (!allowNetwork) return std::nullopt;
 
